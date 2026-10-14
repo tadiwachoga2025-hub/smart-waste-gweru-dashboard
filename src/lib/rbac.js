@@ -58,16 +58,17 @@ export const PERMISSIONS = {
   'reports.jobs': 'View reports for own jobs',
   'reports.devices': 'View device reports',
   'reports.own': 'View own reports',
-  'audit.view': 'View the access log',
+  'audit.view': 'View the internal access log',
+  'audit.external': 'View the external (system) log',
   'alerts.view': 'View bin-full email alerts and their history',
   'alerts.manage': 'Manage who receives bin-full emails, and the thresholds',
 };
 
 const ROLE_PERMISSIONS = {
-  admin: ['users.manage', 'bins.view', 'predictions.all', 'reports.all', 'audit.view', 'alerts.view', 'alerts.manage'],
+  admin: ['users.manage', 'bins.view', 'predictions.all', 'reports.all', 'audit.view', 'audit.external', 'alerts.view', 'alerts.manage'],
   officer: [
     'bins.view', 'predictions.all', 'routes.generate', 'jobs.assign', 'jobs.update.all',
-    'sensors.limited', 'complaints.review', 'reports.all', 'alerts.view',
+    'sensors.limited', 'complaints.review', 'reports.all', 'alerts.view', 'audit.external',
   ],
   driver: ['predictions.assigned', 'jobs.update.assigned', 'reports.jobs'],
   technician: ['bins.technical', 'predictions.diagnostics', 'sensors.manage', 'reports.devices'],
@@ -120,7 +121,7 @@ const ALL_NAV = [
   { key: 'reports', view: 'reports', label: 'Reports', needs: ['reports.all', 'reports.jobs', 'reports.devices', 'reports.own'] },
   { key: 'alerts', view: 'alerts', label: 'Alerts', needs: ['alerts.view'] },
   { key: 'users', view: 'users', label: 'Users', needs: ['users.manage'] },
-  { key: 'audit', view: 'audit', label: 'Access log', needs: ['audit.view'] },
+  { key: 'audit', view: 'audit', label: 'Audit logs', needs: ['audit.view', 'audit.external'] },
 ];
 
 export function navFor(profile) {
