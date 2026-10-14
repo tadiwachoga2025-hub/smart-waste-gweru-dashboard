@@ -4,6 +4,7 @@ import 'leaflet/dist/leaflet.css';
 import L from 'leaflet';
 import { ref, onValue } from 'firebase/database';
 import { db } from './firebase';
+import InstallPrompt from './components/InstallPrompt.jsx';
 
 import markerIcon2x from 'leaflet/dist/images/marker-icon-2x.png';
 import markerIcon from 'leaflet/dist/images/marker-icon.png';
@@ -194,6 +195,7 @@ const App = () => {
 
         </div>
       </div>
+      <InstallPrompt />
     </div>
   );
 };
