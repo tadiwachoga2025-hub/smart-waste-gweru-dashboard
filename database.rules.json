@@ -1,0 +1,122 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "users": {
+      ".read": "(auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'admin')) || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'officer') && query.orderByChild === 'role' && query.equalTo === 'driver')",
+      ".indexOn": [
+        "role",
+        "status"
+      ],
+      "$uid": {
+        ".read": "auth != null && (auth.uid === $uid || auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'admin') || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'officer') && data.child('role').val() === 'driver'))",
+        ".write": "(auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'admin')) || (auth != null && auth.uid === $uid && !data.exists() && newData.child('role').val() === 'citizen' && newData.child('status').val() === 'active' && !newData.child('grants').exists())",
+        "name": {
+          ".write": "auth != null && auth.uid === $uid && root.child('users').child(auth.uid).child('status').val() === 'active'"
+        },
+        "phone": {
+          ".write": "auth != null && auth.uid === $uid && root.child('users').child(auth.uid).child('status').val() === 'active'"
+        },
+        ".validate": "newData.hasChildren(['name', 'email', 'role', 'status']) && ['admin','officer','driver','technician','citizen','device'].contains(newData.child('role').val()) && ['active','inactive'].contains(newData.child('status').val())"
+      }
+    },
+    "bins": {
+      ".read": "(auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'admin')) || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'officer')) || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'technician'))",
+      "$binId": {
+        ".write": "(auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'technician')) || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'device')) || ((auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && root.child('users').child(auth.uid).child('role').val() === 'admin' && root.child('users').child(auth.uid).child('grants').child('sensors.manage').val() === true))"
+      }
+    },
+    "publicBins": {
+      ".read": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'active'"
+    },
+    "logistics": {
+      ".read": "(auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'admin')) || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'officer'))"
+    },
+    "jobs": {
+      ".read": "(auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'admin')) || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'officer')) || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && root.child('users').child(auth.uid).child('role').val() === 'driver' && query.orderByChild === 'driverUid' && query.equalTo === auth.uid)",
+      ".indexOn": [
+        "driverUid",
+        "status"
+      ],
+      "$jobId": {
+        ".read": "(auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'admin')) || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'officer')) || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'driver') && data.child('driverUid').val() === auth.uid)",
+        ".write": "(auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'officer')) || ((auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && root.child('users').child(auth.uid).child('role').val() === 'admin' && root.child('users').child(auth.uid).child('grants').child('jobs.assign').val() === true))",
+        "status": {
+          ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'driver') && data.parent().child('driverUid').val() === auth.uid && ((data.val() === 'assigned' && newData.val() === 'started') || (data.val() === 'started' && newData.val() === 'completed'))"
+        },
+        "startedAt": {
+          ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'driver') && data.parent().child('driverUid').val() === auth.uid"
+        },
+        "completedAt": {
+          ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'driver') && data.parent().child('driverUid').val() === auth.uid"
+        },
+        "updatedAt": {
+          ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'driver') && data.parent().child('driverUid').val() === auth.uid"
+        },
+        "stops": {
+          "$i": {
+            "done": {
+              ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'driver') && root.child('jobs').child($jobId).child('driverUid').val() === auth.uid && root.child('jobs').child($jobId).child('status').val() === 'started'"
+            },
+            "doneAt": {
+              ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'driver') && root.child('jobs').child($jobId).child('driverUid').val() === auth.uid"
+            }
+          }
+        }
+      }
+    },
+    "issues": {
+      ".read": "(auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'admin')) || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'officer')) || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && root.child('users').child(auth.uid).child('role').val() === 'driver' && query.orderByChild === 'driverUid' && query.equalTo === auth.uid)",
+      ".indexOn": [
+        "driverUid",
+        "status"
+      ],
+      "$issueId": {
+        ".read": "(auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'admin')) || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'officer')) || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'driver') && data.child('driverUid').val() === auth.uid)",
+        ".write": "((auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'officer')) || ((auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && root.child('users').child(auth.uid).child('role').val() === 'admin' && root.child('users').child(auth.uid).child('grants').child('jobs.assign').val() === true))) || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'driver') && !data.exists() && newData.child('driverUid').val() === auth.uid)"
+      }
+    },
+    "complaints": {
+      ".read": "(auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'admin')) || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'officer')) || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && root.child('users').child(auth.uid).child('role').val() === 'citizen' && query.orderByChild === 'citizenUid' && query.equalTo === auth.uid)",
+      ".indexOn": [
+        "citizenUid",
+        "status"
+      ],
+      "$cid": {
+        ".read": "(auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'admin')) || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'officer')) || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'citizen') && data.child('citizenUid').val() === auth.uid)",
+        ".write": "((auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'officer')) || ((auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && root.child('users').child(auth.uid).child('role').val() === 'admin' && root.child('users').child(auth.uid).child('grants').child('complaints.review').val() === true))) || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'citizen') && !data.exists() && newData.child('citizenUid').val() === auth.uid && newData.child('status').val() === 'new')"
+      }
+    },
+    "trucks": {
+      ".read": "(auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'admin')) || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'officer'))",
+      "$truckId": {
+        ".write": "(auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'officer')) || ((auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && root.child('users').child(auth.uid).child('role').val() === 'admin' && root.child('users').child(auth.uid).child('grants').child('jobs.assign').val() === true))"
+      }
+    },
+    "devices": {
+      ".read": "(auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'admin')) || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'officer')) || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'technician'))",
+      "$deviceId": {
+        ".write": "(auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'technician')) || ((auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && root.child('users').child(auth.uid).child('role').val() === 'admin' && root.child('users').child(auth.uid).child('grants').child('sensors.manage').val() === true))"
+      }
+    },
+    "maintenance": {
+      ".read": "(auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'admin')) || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'officer')) || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'technician'))",
+      ".indexOn": [
+        "deviceId",
+        "binId"
+      ],
+      "$mid": {
+        ".write": "((auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'technician')) || ((auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && root.child('users').child(auth.uid).child('role').val() === 'admin' && root.child('users').child(auth.uid).child('grants').child('sensors.manage').val() === true))) || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'officer') && !data.exists() && newData.child('type').val() === 'report')"
+      }
+    },
+    "audit": {
+      ".read": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'admin')",
+      ".indexOn": [
+        "at"
+      ],
+      "$aid": {
+        ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && !data.exists() && newData.child('actorUid').val() === auth.uid"
+      }
+    }
+  }
+}

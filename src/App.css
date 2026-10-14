@@ -48,3 +48,20 @@
   color: var(--t-tertiary);
   font-size: var(--fs-sm);
 }
+
+/* Skip link: first Tab stop, visible only on focus */
+.app-skip {
+  position: absolute;
+  top: 8px;
+  left: 8px;
+  z-index: calc(var(--z-overlay) + 20);
+  padding: 10px 16px;
+  border-radius: var(--r-sm);
+  background: var(--c-accent);
+  color: var(--c-accent-ink);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  transform: translateY(-200%);
+}
+.app-skip:focus { transform: none; }
+.app-main:focus { outline: none; }

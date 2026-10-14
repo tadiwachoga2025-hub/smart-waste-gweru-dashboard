@@ -53,6 +53,8 @@ def run_logistics_engine():
         print("No bins found in database.")
         return
 
+    public_bins_ref = db.reference('publicBins')
+
     # Load ML Model
     model = train_forecasting_model()
     
@@ -70,6 +72,16 @@ def run_logistics_engine():
         
         # Update specific bin with its prediction
         bins_ref.child(bin_id).update({'prediction': predicted_status})
+
+        # Citizen-safe mirror: location and a coarse fill band only. Residents
+        # may read /publicBins but never /bins (predictions, sensor internals).
+        fill_band = 'critical' if current_fill >= 90 else 'high' if current_fill >= 75 else 'normal'
+        public_bins_ref.child(bin_id).set({
+            'location': b_data.get('location', bin_id),
+            'lat': b_data.get('lat'),
+            'lng': b_data.get('lng'),
+            'band': fill_band,
+        })
         
         # Flag for collection if it's > 80% or will be full in < 12 hours
         if current_fill >= 80 or hours_until_full < 12:

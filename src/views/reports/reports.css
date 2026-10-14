@@ -1,0 +1,23 @@
+/* Reports. Built from tokens only; prefix rp-. */
+
+
+.rp-fig { position: relative; margin: 0; display: grid; gap: var(--sp-2); color: var(--t-secondary); }
+.rp-fig__peak { color: var(--t-tertiary); font-size: var(--fs-xs); font-variant-numeric: tabular-nums; }
+.rp-fig__axis { display: flex; justify-content: space-between; gap: var(--sp-2); color: var(--t-tertiary); font-size: var(--fs-xs); }
+.rp-svg { display: block; width: 100%; overflow: visible; }
+.rp-svg--stack { height: 14px; border-radius: var(--r-pill); overflow: hidden; }
+.rp-axis { stroke: var(--line-strong); stroke-width: 1; }
+
+.rp-legend { display: grid; gap: var(--sp-2); margin: var(--sp-2) 0 0; padding: 0; list-style: none; }
+.rp-legend li { display: flex; align-items: center; gap: var(--sp-3); font-size: var(--fs-sm); }
+.rp-legend i { flex: none; width: 10px; height: 10px; border-radius: 3px; }
+.rp-legend__name { flex: 1; min-width: 0; color: var(--t-primary); }
+.rp-legend__name small { color: var(--t-tertiary); font-size: var(--fs-xs); }
+.rp-legend__val { color: var(--t-secondary); font-variant-numeric: tabular-nums; }
+
+.rp-grid { display: grid; gap: var(--sp-4); grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr)); }
+.rp-stack { display: flex; flex-direction: column; gap: var(--sp-5); }
+.rp-range { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2); }
+.rp-note { margin: 0; color: var(--t-tertiary); font-size: var(--fs-xs); }
+.rp-empty-pad { padding: var(--sp-4) 0; }
+.rp-list-note { color: var(--t-tertiary); font-size: var(--fs-xs); }

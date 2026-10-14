@@ -328,3 +328,33 @@
   .nav-wordmark { font-size: 1.35rem; }
   .nav-tab { font-size: var(--fs-md); height: 40px; padding: 0 12px; }
 }
+
+/* Who is signed in, inside the account menu */
+.nav-who {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  margin: 2px 8px 12px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid var(--line);
+}
+.nav-who-name { font-size: var(--fs-md); font-weight: 500; overflow-wrap: anywhere; }
+.nav-who-meta { color: var(--t-secondary); font-size: var(--fs-xs); overflow-wrap: anywhere; }
+.nav-signout {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 44px;
+  margin-top: 8px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--t-primary);
+  font-size: var(--fs-sm);
+  text-align: left;
+  transition: background var(--dur-fast) var(--ease-out), transform 100ms ease-out;
+}
+.nav-signout:hover { background: var(--c-surface-3); }
+.nav-signout:active { transform: scale(0.98); }

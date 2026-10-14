@@ -109,7 +109,6 @@
 .fu-center-lab { font-size: var(--fs-md); color: var(--t-secondary); }
 .fu-big { display: block; font-size: 3.4rem; font-weight: 500; letter-spacing: -0.02em; line-height: 1.05; color: var(--t-primary); }
 .fu-chart-wrap { position: relative; margin-top: auto; padding-top: var(--sp-5); }
-.fu-sr { position: absolute; width: 1px; height: 1px; margin: -1px; padding: 0; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0; }
 .fu-strip { position: relative; height: 104px; padding: 0 var(--sp-6); }
 .fu-line { position: absolute; left: 0; right: 0; top: 18px; height: 2px; background: var(--c-surface-3); }
 .fu-line-fill { display: block; height: 100%; background: var(--chart-line); }

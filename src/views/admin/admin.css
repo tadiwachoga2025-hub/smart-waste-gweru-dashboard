@@ -1,0 +1,37 @@
+/* Administrator surfaces. Built from tokens.css only; classes prefixed adm-. */
+
+.adm-toolbar {
+  display: flex; flex-wrap: wrap; align-items: flex-end; gap: var(--sp-3) var(--sp-4);
+  padding: var(--sp-4) var(--sp-6);
+  border-bottom: 1px solid var(--line);
+}
+.adm-toolbar__search { flex: 1 1 240px; min-width: 200px; }
+.adm-toolbar__group { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; }
+.adm-toolbar__label { color: var(--t-tertiary); font-size: var(--fs-xs); }
+.adm-toolbar__select { min-width: 160px; }
+@media (max-width: 680px) { .adm-toolbar { padding: var(--sp-3) var(--sp-4); } }
+
+.adm-section { display: flex; flex-direction: column; gap: var(--sp-2); }
+.adm-section__title { margin: 0; color: var(--t-primary); font-size: var(--fs-md); font-weight: 600; }
+.adm-perms { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
+
+.adm-secret {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3);
+  padding: var(--sp-3) var(--sp-4);
+  border: 1px solid var(--line); border-radius: var(--r-sm);
+  background: var(--c-surface-2);
+}
+.adm-secret__value { flex: 1 1 200px; min-width: 0; overflow-wrap: anywhere; color: var(--t-primary); font-size: var(--fs-md); user-select: all; }
+.adm-secret__note { flex-basis: 100%; margin: 0; color: var(--t-tertiary); font-size: var(--fs-xs); }
+.adm-pwrow { display: flex; align-items: flex-end; gap: var(--sp-2); }
+.adm-pwrow .ui-field { flex: 1; min-width: 0; }
+
+.adm-statusrow { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--sp-3); }
+.adm-statusrow__text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+
+.adm-health { padding: 0; }
+.adm-count { color: var(--t-tertiary); font-size: var(--fs-xs); }
+.adm-detail { max-width: 36ch; overflow-wrap: anywhere; color: var(--t-secondary); }
+.adm-pad { padding: var(--sp-4) var(--sp-6); }
+@media (max-width: 680px) { .adm-pad { padding: var(--sp-3) var(--sp-4); } .adm-detail { max-width: none; } }
+.adm-fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }

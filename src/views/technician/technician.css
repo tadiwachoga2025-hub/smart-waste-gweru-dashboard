@@ -1,0 +1,41 @@
+/* IoT technician surface. Only what the UI kit (styles/ui.css) does not cover. */
+.tech-toolbar {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3) var(--sp-4);
+  padding: 0 var(--sp-6);
+}
+.tech-toolbar__search { flex: 1 1 220px; max-width: 320px; }
+.tech-check {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-4);
+}
+.tech-check__facts { display: flex; flex-wrap: wrap; gap: var(--sp-2) var(--sp-6); margin: 0; }
+.tech-check__facts dt { color: var(--t-tertiary); font-size: var(--fs-xs); }
+.tech-check__facts dd { margin: 2px 0 0; font-size: var(--fs-md); font-weight: 500; }
+.tech-problems { display: flex; flex-direction: column; gap: var(--sp-2); margin: var(--sp-4) 0 0; padding: 0; list-style: none; }
+.tech-problems li {
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--r-sm);
+  background: var(--c-surface-2);
+  font-size: var(--fs-sm);
+}
+.tech-problems ul { margin: var(--sp-1) 0 0; padding-left: var(--sp-5); color: var(--t-secondary); }
+.tech-fill { display: grid; gap: 6px; min-width: 110px; }
+.tech-fill__num { font-variant-numeric: tabular-nums; font-weight: 500; }
+.tech-flag { color: var(--s-warning); font-size: var(--fs-xs); }
+.tech-timeline { display: flex; flex-direction: column; margin: 0; padding: 0; list-style: none; }
+.tech-timeline li { padding: var(--sp-3) 0; border-bottom: 1px solid var(--line); }
+.tech-timeline li:last-child { border-bottom: 0; }
+.tech-timeline__top { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); }
+.tech-timeline p { margin: var(--sp-1) 0 0; font-size: var(--fs-sm); overflow-wrap: anywhere; }
+.tech-readonly { padding: 0 var(--sp-6); }
+@media (max-width: 680px) {
+  .tech-toolbar, .tech-readonly { padding: 0 var(--sp-4); }
+  .tech-toolbar__search { max-width: none; }
+}

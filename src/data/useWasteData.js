@@ -46,7 +46,7 @@ function statusOf(fill, onRoute) {
  * Live Firebase bins + logistics.
  * Returns { status, isOnline, liveCount, bins, route, metrics }.
  */
-export function useWasteData() {
+export function useWasteData({ bins: wantBins = true, logistics: wantLogistics = true } = {}) {
   const [rawBins, setRawBins] = useState(null);
   const [logistics, setLogistics] = useState(null);
   const [connection, setConnection] = useState('connecting');
@@ -64,35 +64,42 @@ export function useWasteData() {
   }, []);
 
   useEffect(() => {
+    // Roles without access to a feed never subscribe (the rules would refuse
+    // it and the dashboard would show a false "feed error").
+    if (!wantBins && !wantLogistics) return undefined;
     const timeout = window.setTimeout(() => {
       setConnection((c) => (c === 'connecting' ? 'offline' : c));
     }, CONNECT_TIMEOUT_MS);
     const onError = () => setConnection('error');
 
-    const offBins = onValue(
-      ref(db, 'bins'),
-      (snapshot) => {
-        const data = snapshot.val();
-        if (data) setRawBins(Object.keys(data).map((key) => ({ id: key, ...data[key] })));
-        else setRawBins([]);
-        setConnection('live');
-      },
-      onError,
-    );
-    const offLogistics = onValue(
-      ref(db, 'logistics'),
-      (snapshot) => {
-        const data = snapshot.val();
-        if (data) setLogistics(data);
-      },
-      onError,
-    );
+    const offBins = wantBins
+      ? onValue(
+          ref(db, 'bins'),
+          (snapshot) => {
+            const data = snapshot.val();
+            if (data) setRawBins(Object.keys(data).map((key) => ({ id: key, ...data[key] })));
+            else setRawBins([]);
+            setConnection('live');
+          },
+          onError,
+        )
+      : () => {};
+    const offLogistics = wantLogistics
+      ? onValue(
+          ref(db, 'logistics'),
+          (snapshot) => {
+            const data = snapshot.val();
+            if (data) setLogistics(data);
+          },
+          onError,
+        )
+      : () => {};
     return () => {
       window.clearTimeout(timeout);
       offBins();
       offLogistics();
     };
-  }, []);
+  }, [wantBins, wantLogistics]);
 
   return useMemo(() => {
     const activeRoute = Array.isArray(logistics?.activeRoute) ? logistics.activeRoute : [];
@@ -154,7 +161,7 @@ export function useWasteData() {
       ].map((band) => ({ ...band, pct: bins.length ? Math.round((band.count / bins.length) * 100) : 0 })),
     };
 
-    const status = !isOnline ? 'offline' : connection;
+    const status = !wantBins && !wantLogistics ? 'idle' : !isOnline ? 'offline' : connection;
     return { status, isOnline, liveCount: bins.length, loaded: rawBins !== null, bins, route, metrics };
-  }, [rawBins, logistics, connection, isOnline]);
+  }, [rawBins, logistics, connection, isOnline, wantBins, wantLogistics]);
 }
