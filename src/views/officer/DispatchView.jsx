@@ -26,17 +26,45 @@ function finite(n) {
   return Number.isFinite(Number(n)) ? Number(n) : 0;
 }
 
-/** Freeze a bin as a job stop so drivers never need to read /bins. */
+/** Freeze a bin as a job stop so drivers never need to read /bins.
+ *  Returns null when the bin has no usable coordinates: a stop at a fake
+ *  (0, 0) would send a driver into the ocean, so callers drop it loudly.
+ *  Note Number(null) and Number('') are both 0, so missing coords arrive here
+ *  as (0, 0) and must be rejected explicitly, not just by isFinite. */
 function snapshot(bin) {
+  if (bin == null) return null;
+  const lat = Number(bin.lat);
+  const lng = Number(bin.lng);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  if (lat === 0 && lng === 0) return null;
   return {
     binId: bin.id,
     location: bin.location ?? bin.id,
-    lat: finite(bin.lat),
-    lng: finite(bin.lng),
+    lat,
+    lng,
     fillLevel: finite(bin.fillLevel),
     prediction: bin.prediction ?? 'Pending',
     done: false,
   };
+}
+
+/** Map bins to stops, reporting how many had no location and were left out. */
+function snapshotsWithReport(bins, toast) {
+  const stops = [];
+  let dropped = 0;
+  bins.forEach((b) => {
+    const s = snapshot(b);
+    if (s) stops.push(s);
+    else dropped += 1;
+  });
+  if (dropped > 0) {
+    toast.error(
+      dropped === bins.length
+        ? 'Those bins have no map location, so no job can be built from them.'
+        : `${dropped} ${dropped === 1 ? 'bin has' : 'bins have'} no map location and ${dropped === 1 ? 'was' : 'were'} left out of the job.`,
+    );
+  }
+  return stops;
 }
 
 function FillBar({ value, label }) {
@@ -92,7 +120,17 @@ function AssignModal({ draft, onClose, drivers, trucks, activeJobs }) {
 
     const driver = activeDrivers.find((d) => d.id === driverUid);
     const truck = usableTrucks.find((t) => t.id === truckId);
-    const truckName = `${truck.label} · ${truck.plate}`;
+    // The lists are live: a driver deactivated or a truck sent to maintenance
+    // after the modal opened would otherwise crash on `.label` below.
+    if (!driver || !truck) {
+      setErrors({
+        ...(driver ? {} : { driver: 'That driver is no longer available. Choose another.' }),
+        ...(truck ? {} : { truck: 'That truck is no longer available. Choose another.' }),
+      });
+      toast.error('The driver or truck list just changed. Choose again.');
+      return;
+    }
+    const truckName = `${truck.label ?? 'Truck'} · ${truck.plate ?? ''}`.trim();
     const title = `${draft.source === 'ai-route' ? 'Route' : 'Manual job'} · ${plural(stops.length, 'stop')}`;
     const data = {
       title,
@@ -366,9 +404,14 @@ export default function DispatchView({ data }) {
     `${truck.label} is now ${TRUCK_LABEL[status].toLowerCase()}.`,
   );
 
-  const openRouteDraft = () => setDraft({ source: 'ai-route', stops: routeBins.map(snapshot) });
+  const openRouteDraft = () => {
+    const stops = snapshotsWithReport(routeBins, toast);
+    if (stops.length === 0) return;
+    setDraft({ source: 'ai-route', stops });
+  };
   const openManualDraft = () => {
-    const stops = picked.map((id) => binById.get(id)).filter(Boolean).map(snapshot);
+    const stops = snapshotsWithReport(picked.map((id) => binById.get(id)).filter(Boolean), toast);
+    if (stops.length === 0) return;
     setDraft({ source: 'manual', stops });
   };
   const closeDraft = () => {
@@ -389,7 +432,7 @@ export default function DispatchView({ data }) {
   return (
     <Page label="Dispatch">
       <PageHead
-        eyebrow="Waste management officer"
+        eyebrow="Waste Management Officer"
         title="Dispatch"
         sub="Send the AI-planned route to a driver, build a job by hand, and keep an eye on jobs, issues and trucks."
       />
@@ -435,7 +478,7 @@ export default function DispatchView({ data }) {
                     <li key={b.id} className="ui-row" style={{ padding: 'var(--sp-3) 0' }}>
                       <span className="ui-mono ui-tertiary" aria-hidden="true" style={{ width: 20 }}>{i + 1}</span>
                       <BinLine bin={b} />
-                      <div style={{ width: 120 }}>
+                      <div style={{ flex: '0 1 160px', minWidth: 120 }}>
                         <span className="tabular" style={{ ...smallStyle, textAlign: 'right', display: 'block', marginBottom: 'var(--sp-1)' }}>{Math.round(b.fillLevel)}% full</span>
                         <FillBar value={b.fillLevel} label={`${b.location} fill level`} />
                       </div>
@@ -475,7 +518,7 @@ export default function DispatchView({ data }) {
                         onChange={() => togglePick(b.id)}
                       />
                     </div>
-                    <div style={{ width: 80 }}>
+                    <div style={{ flex: '0 1 110px', minWidth: 88 }}>
                       <FillBar value={b.fillLevel} label={`${b.location} fill level`} />
                     </div>
                   </li>

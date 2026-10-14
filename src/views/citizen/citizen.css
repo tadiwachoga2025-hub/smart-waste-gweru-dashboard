@@ -18,7 +18,7 @@
 }
 .cz-panels { margin-top: var(--sp-4); }
 .cz-panels h2.sr-only:focus { outline: none; }
-.cz-tabs { display: flex; }
+.cz-tabs { display: flex; margin-top: var(--sp-5); }
 .cz-tabs .ui-seg { width: 100%; }
 .cz-tabs .ui-seg__btn { flex: 1 1 0; min-height: var(--cz-tap); padding: 0 var(--sp-3); }
 

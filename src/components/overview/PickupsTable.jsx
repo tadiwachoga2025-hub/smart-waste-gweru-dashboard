@@ -87,7 +87,7 @@ export default function PickupsTable({ bins, selectedId, onSelect }) {
     <div className={`card pt${expanded ? '' : ' is-collapsed'}`} ref={rootRef}>
       <div className="pt-head">
         <div className="pt-title">
-          <h2 className="card-title">Live Bin Monitor</h2>
+          <h2 className="card-title">Live bin monitor</h2>
           <span className="pt-chip">Targeting <span className="tabular">{critical}</span> critical {critical === 1 ? 'bin' : 'bins'}</span>
         </div>
         <div className="pt-tools">

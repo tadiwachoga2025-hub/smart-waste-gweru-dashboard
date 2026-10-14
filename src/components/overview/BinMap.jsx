@@ -127,20 +127,27 @@ export default function BinMap({ bins, route, selectedId, onSelect, searchInputR
     binsRef.current = bins;
   }, [bins]);
 
+  // A bin with missing coordinates still belongs in the table, but it must
+  // never reach Leaflet: one NaN position throws and takes the whole map down.
+  const mappable = useMemo(
+    () => bins.filter((b) => Number.isFinite(b.lat) && Number.isFinite(b.lng)),
+    [bins],
+  );
+
   // Fit to all bins on first load and whenever the set of bin positions changes
   // (fill-level updates do not alter the key, so they never re-zoom).
-  const posKey = useMemo(() => bins.map((b) => `${b.id}:${b.lat},${b.lng}`).join('|'), [bins]);
+  const posKey = useMemo(() => mappable.map((b) => `${b.id}:${b.lat},${b.lng}`).join('|'), [mappable]);
   useEffect(() => {
-    const list = binsRef.current;
+    const list = mappable;
     if (!map || !posKey || !list.length) return;
     map.fitBounds(L.latLngBounds(list.map((b) => [b.lat, b.lng])), { padding: [50, 50], maxZoom: 16 });
-  }, [map, posKey]);
+  }, [map, posKey, mappable]);
 
   // Fly to the selection when it changes (table click, search, pin click).
   useEffect(() => {
     if (!map || !selectedId || !follow) return;
     const bin = binsRef.current.find((b) => b.id === selectedId);
-    if (!bin) return;
+    if (!bin || !Number.isFinite(bin.lat) || !Number.isFinite(bin.lng)) return;
     const p = L.latLng(bin.lat, bin.lng);
     if (map.getBounds().pad(-0.25).contains(p)) return;
     map.flyTo(p, Math.max(map.getZoom(), 16), { duration: 0.9 });
@@ -174,7 +181,9 @@ export default function BinMap({ bins, route, selectedId, onSelect, searchInputR
     setQuery(bin.location);
     setOpen(false);
     onSelect(bin.id);
-    map?.flyTo([bin.lat, bin.lng], Math.max(map.getZoom(), 16), { duration: 0.9 });
+    if (Number.isFinite(bin.lat) && Number.isFinite(bin.lng)) {
+      map?.flyTo([bin.lat, bin.lng], Math.max(map.getZoom(), 16), { duration: 0.9 });
+    }
   };
 
   const onKeyDown = (e) => {
@@ -218,7 +227,7 @@ export default function BinMap({ bins, route, selectedId, onSelect, searchInputR
               <Polyline positions={routeCoords} className="bm-route" interactive={false} pathOptions={ROUTE_LINE} />
             </>
           )}
-          {bins.map((b) => (
+          {mappable.map((b) => (
             <BinMarker key={b.id} bin={b} selected={b.id === selectedId} dim={!sort.test(b)} onSelect={onSelect} />
           ))}
         </MapContainer>

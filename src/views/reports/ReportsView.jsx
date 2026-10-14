@@ -604,7 +604,7 @@ export default function ReportsView({ data }) {
 
   return (
     <Page label="Reports">
-      <PageHead title="Reports" />
+      <PageHead eyebrow="Reports" title="Reports" sub="No reports are available for your account." />
       <Panel>
         <EmptyState icon="hazard" title="No reports available">
           Your account does not have access to any reports. Ask an administrator if you need them.

@@ -42,6 +42,14 @@ function statusOf(fill, onRoute) {
   return 'normal';
 }
 
+// Number(null) and Number('') are both 0, which would plant a "missing
+// location" bin at (0, 0) in the Atlantic. Keep missing values as NaN so the
+// finite-pair filters downstream (map pins, stop matching, job snapshots)
+// drop them instead of plotting them.
+function coordOrNaN(v) {
+  return v == null || v === '' ? NaN : Number(v);
+}
+
 /**
  * Live Firebase bins + logistics.
  * Returns { status, isOnline, liveCount, bins, route, metrics }.
@@ -102,7 +110,13 @@ export function useWasteData({ bins: wantBins = true, logistics: wantLogistics =
   }, [wantBins, wantLogistics]);
 
   return useMemo(() => {
-    const activeRoute = Array.isArray(logistics?.activeRoute) ? logistics.activeRoute : [];
+    // Route points may be hand-edited or partially written: coerce to finite
+    // [lat, lng] pairs and drop the rest. One bad point must never break the
+    // map polyline or the stop matching below it.
+    const rawRoute = Array.isArray(logistics?.activeRoute) ? logistics.activeRoute : [];
+    const activeRoute = rawRoute
+      .map((p) => [Number(p?.[0]), Number(p?.[1])])
+      .filter((p) => Number.isFinite(p[0]) && Number.isFinite(p[1]));
     const resources = logistics?.resources ?? {};
 
     const bins = (rawBins ?? []).map((b) => {
@@ -114,8 +128,8 @@ export function useWasteData({ bins: wantBins = true, logistics: wantLogistics =
         id: b.id,
         code: `#${String(b.id).toUpperCase()}`,
         location: b.location ?? b.id,
-        lat: Number(b.lat),
-        lng: Number(b.lng),
+        lat: coordOrNaN(b.lat),
+        lng: coordOrNaN(b.lng),
         fillLevel,
         prediction: b.prediction || 'Pending',
         lastUpdated: b.lastUpdated || '—',
@@ -139,6 +153,8 @@ export function useWasteData({ bins: wantBins = true, logistics: wantLogistics =
       trucks: Number(resources.trucksAllocated) || 0,
       binsToCollect: Number(resources.binsToCollect) || 0,
       hasData: Boolean(logistics),
+      // Server-free plan age: the engine stamps logistics.updatedAt each cycle.
+      updatedAt: Number(logistics?.updatedAt) || null,
     };
 
     const criticalBins = bins.filter((b) => b.fillLevel >= ENGINE_RULES.criticalFill).length;

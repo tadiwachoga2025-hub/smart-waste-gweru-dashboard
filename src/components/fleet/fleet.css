@@ -61,8 +61,10 @@ p.fv-muted { margin: 2px 0 0; }
   padding: var(--sp-4) var(--sp-4) var(--sp-3);
   background: var(--c-surface-2); border: 0; border-radius: 18px;
   color: var(--t-primary); isolation: isolate;
-  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out), transform 100ms ease-out;
 }
+/* Press feedback lands on pointer-down, not on release (Apple §1). */
+.fv-card:active { transform: scale(0.98); }
 .fv-card:hover:not(.is-sel) { background: var(--c-surface-3); }
 .fv-card > span { display: flex; }
 .fv-card__bg { position: absolute; inset: 0; z-index: -1; border-radius: 18px; background: var(--c-accent); }
@@ -205,6 +207,10 @@ p.fv-muted { margin: 2px 0 0; }
 .fv-callout strong { font-size: var(--fs-lg); font-weight: 600; }
 .fv-callout span { font-size: var(--fs-sm); color: var(--t-on-light-muted); }
 
+.fv-meter { height: 8px; border-radius: 4px; background: var(--line-strong); overflow: hidden; }
+.fv-meter__fill { display: block; height: 100%; border-radius: 4px; background: var(--s-ok); }
+.fv-meter__fill--critical { background: var(--s-critical); }
+.fv-meter__fill--ok { background: var(--s-ok); }
 .fv-meter__fill--warning { background: var(--s-warning); }
 .fv-load > .fv-empty { padding: var(--sp-5) var(--sp-6) var(--sp-6); text-align: left; }
 .fv-stoplist { list-style: none; margin: 0; padding: 0 var(--sp-6) var(--sp-6); display: grid; gap: var(--sp-4); }
