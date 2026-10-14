@@ -58,6 +58,9 @@ Jobs carry a snapshot of their stops so a driver never reads `/bins`. Officers l
 
 ## Known limits (be upfront in the project report)
 
+- **The access log is advisory, not tamper-proof.** Entries are written by the browser after an action, so a determined staff member can skip logging. The rules make every entry honest (the actor's uid, role and name must be their own, time is server-stamped, entries cannot be edited or deleted, residents may only log two actions) but cannot force an entry to exist. Mandatory audit needs Cloud Function triggers on `users`, `jobs` and `complaints`.
+- **Administrators cannot edit their own role, status or grants** (enforced by the rules), so granting an operational permission always takes a second administrator. Keep at least two administrators.
+
 - **Deactivating a user** sets `status: 'inactive'`: the app signs them out and every rule rejects them, but their Auth login still exists. Truly disabling it needs the Admin SDK or a Cloud Function.
 - **Creating staff accounts** from the browser uses a throwaway second Firebase app so the administrator stays signed in. A Cloud Function is the stronger production design.
 - **Photos** are compressed in the browser and stored as data URLs in the database to avoid needing Firebase Storage billing. Fine for a prototype; move to Storage at scale.

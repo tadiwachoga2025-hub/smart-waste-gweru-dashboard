@@ -52,13 +52,18 @@ const rules = {
         '.read': `auth != null && (auth.uid === $uid || ${admin} || (${officer} && data.child('role').val() === 'driver'))`,
         // Self-registration: a citizen profile for yourself, nothing more.
         // Administrators write any profile (create staff, change role, status, grants).
+        // Administrators edit OTHER people's profiles. They cannot rewrite their
+        // own role, status or grants, so an operational grant always has to come
+        // from a second administrator (the matrix footnote). Names and phones
+        // have their own self-edit rules below.
         '.write': or(
-          admin,
+          `${admin} && auth.uid !== $uid`,
           `auth != null && auth.uid === $uid && !data.exists() && newData.child('role').val() === 'citizen' && newData.child('status').val() === 'active' && !newData.child('grants').exists()`,
         ),
         // People may edit their own display name and phone, never role/status/grants.
         name: { '.write': `auth != null && auth.uid === $uid && ${active}` },
         phone: { '.write': `auth != null && auth.uid === $uid && ${active}` },
+        updatedAt: { '.write': `auth != null && auth.uid === $uid && ${active}` },
         '.validate': `newData.hasChildren(['name', 'email', 'role', 'status']) && ['admin','officer','driver','technician','citizen','device'].contains(newData.child('role').val()) && ['active','inactive'].contains(newData.child('status').val())`,
       },
     },
@@ -87,7 +92,7 @@ const rules = {
       '.indexOn': ['driverUid', 'status'],
       $jobId: {
         '.read': or(admin, officer, `${driver} && data.child('driverUid').val() === auth.uid`),
-        '.write': canDispatch,
+        '.write': `(${canDispatch}) && (data.exists() || newData.child('createdBy').val() === auth.uid)`,
         priority: { '.validate': oneOf('normal', 'high', 'urgent') },
         title: { '.validate': text(120) },
         notes: { '.validate': text(500) },
@@ -117,7 +122,7 @@ const rules = {
         '.read': or(admin, officer, `${driver} && data.child('driverUid').val() === auth.uid`),
         '.write': or(
           canDispatch,
-          `${driver} && !data.exists() && newData.child('driverUid').val() === auth.uid && newData.child('status').val() === 'open' && ${stampedNow} && !newData.child('resolvedBy').exists()`,
+          `${driver} && !data.exists() && newData.child('driverUid').val() === auth.uid && root.child('jobs').child(newData.child('jobId').val()).child('driverUid').val() === auth.uid && newData.child('status').val() === 'open' && ${stampedNow} && !newData.child('resolvedBy').exists()`,
         ),
         type: { '.validate': oneOf('inaccessible-bin', 'breakdown', 'other') },
         status: { '.validate': oneOf('open', 'resolved') },
@@ -139,6 +144,7 @@ const rules = {
         status: { '.validate': oneOf('new', 'reviewing', 'assigned', 'resolved', 'rejected') },
         note: { '.validate': text(2000) },
         officerNote: { '.validate': text(1000) },
+        reviewedBy: { '.validate': 'newData.val() === auth.uid' },
         address: { '.validate': text(300) },
         lat: { '.validate': coord(90) },
         lng: { '.validate': coord(180) },
@@ -170,8 +176,8 @@ const rules = {
       $mid: {
         // Technicians record work; officers may only flag a fault ("limited").
         '.write': or(
-          canManageSensors,
-          `${officer} && !data.exists() && newData.child('type').val() === 'report' && ${stampedNow}`,
+          `(${canManageSensors}) && (data.exists() || newData.child('techUid').val() === auth.uid)`,
+          `${officer} && !data.exists() && newData.child('type').val() === 'report' && newData.child('techUid').val() === auth.uid && ${stampedNow}`,
         ),
         type: { '.validate': oneOf('inspection', 'repair', 'replacement', 'calibration', 'report') },
         note: { '.validate': text(1000) },
@@ -186,7 +192,7 @@ const rules = {
       $aid: {
         // Append-only, and the actor can only describe themselves truthfully:
         // uid, role and name come from their own profile, time from the server.
-        '.write': `${signedInActive} && !data.exists() && newData.child('actorUid').val() === auth.uid && newData.child('actorRole').val() === ${me}.child('role').val() && newData.child('at').val() === now`,
+        '.write': `${signedInActive} && !data.exists() && newData.child('actorUid').val() === auth.uid && newData.child('actorRole').val() === ${me}.child('role').val() && newData.child('actorName').val() === ${me}.child('name').val() && newData.child('at').val() === now && (${me}.child('role').val() !== 'citizen' || ['complaint.submit', 'auth.signout'].contains(newData.child('action').val()))`,
         '.validate': `newData.hasChildren(['at', 'actorUid', 'actorRole', 'action'])`,
         actorName: { '.validate': text(120) },
         action: { '.validate': `newData.isString() && newData.val().length <= 60` },
