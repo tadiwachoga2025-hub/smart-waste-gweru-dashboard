@@ -23,6 +23,8 @@ dist-ssr
 .venv/
 __pycache__/
 *.pyc
+model_xgb.json
+training_history.json
 
 # Editor directories and files
 .vscode/*

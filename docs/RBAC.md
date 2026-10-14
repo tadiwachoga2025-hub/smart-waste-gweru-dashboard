@@ -23,7 +23,8 @@ One React app, five roles, one design system. Every person sees only the screens
 | Sensor maintenance | Grant* | Flag faults only | – | Yes | – |
 | Submit complaints | Grant* | Review queue | – | – | Yes |
 | Operational reports | All | All | Own jobs | Device reports | Own reports |
-| Access log | Yes | – | – | – | – |
+| Audit logs: Internal (people) | Yes | – | – | – | – |
+| Audit logs: External (system) | Yes | Yes | – | – | – |
 
 \* An administrator gets these only when another administrator ticks the grant on their profile (Users screen). They are never automatic. Grantable: `routes.generate`, `jobs.assign`, `jobs.update.all`, `sensors.manage`, `complaints.submit`, `complaints.review`.
 
@@ -43,7 +44,9 @@ complaints/{id}    { citizenUid, citizenName, type: 'overflowing_bin'|'missed_co
                      status: 'new'|'reviewing'|'assigned'|'resolved'|'rejected', officerNote?, jobId?, createdAt, updatedAt? }
 devices/{binId}    { binId, model, firmware?, status: 'active'|'faulty'|'replaced'|'retired', installedAt?, notes? }
 maintenance/{id}   { binId, type: 'inspection'|'repair'|'replacement'|'calibration'|'report', note, techUid, techName, createdAt }
-audit/{id}         { at, actorUid, actorName, actorRole, action, target, detail }   append-only, admin-read
+audit/{id}         { at, actorUid, actorName, actorRole, action, target, detail }   append-only, admin-read (Internal log)
+engineLog/{id}     { at, kind: cycle|training|alert|error|lifecycle, status, detail, metrics?, engine }   engine-written, admin+officer read (External log)
+engineStatus       { at, state: live|degraded|error|stopped|..., metrics?, engine }   engine heartbeat, admin+officer read
 ```
 
 Jobs carry a snapshot of their stops so a driver never reads `/bins`. Officers list drivers with `useList('users', { where: ['role', 'driver'] })` (the rules allow exactly that query). Drivers and citizens read through queries (`useList(path, { where: ['driverUid', uid] })`), which is what the rules require.
@@ -58,7 +61,7 @@ Jobs carry a snapshot of their stops so a driver never reads `/bins`. Officers l
 
 ## Known limits (be upfront in the project report)
 
-- **The access log is advisory, not tamper-proof.** Entries are written by the browser after an action, so a determined staff member can skip logging. The rules make every entry honest (the actor's uid, role and name must be their own, time is server-stamped, entries cannot be edited or deleted, residents may only log two actions) but cannot force an entry to exist. Mandatory audit needs Cloud Function triggers on `users`, `jobs` and `complaints`.
+- **The internal audit log is advisory, not tamper-proof.** Entries are written by the browser after an action, so a determined staff member can skip logging. The rules make every entry honest (the actor's uid, role and name must be their own, time is server-stamped, entries cannot be edited or deleted, residents may only log two actions) but cannot force an entry to exist. Mandatory audit needs Cloud Function triggers on `users`, `jobs` and `complaints`. The **external log** (`engineLog`, `alertLog`) is stronger: only the engine (Admin SDK) can write it, so clients cannot forge or erase training runs, cycles or email history.
 - **Administrators cannot edit their own role, status or grants** (enforced by the rules), so granting an operational permission always takes a second administrator. Keep at least two administrators.
 
 - **Deactivating a user** sets `status: 'inactive'`: the app signs them out and every rule rejects them, but their Auth login still exists. Truly disabling it needs the Admin SDK or a Cloud Function.
