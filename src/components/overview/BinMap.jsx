@@ -1,0 +1,261 @@
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
+import { TILES } from '../../lib/tiles';
+import L from 'leaflet';
+import { MapContainer, Marker, Polyline, TileLayer, useMapEvents } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
+import Icon from '../Icon.jsx';
+import './map-table.css';
+
+const CENTER = [-19.512, 29.838];
+
+const SORTS = [
+  { key: 'critical', label: 'Critical (≥90%)', test: (b) => b.fillLevel >= 90 },
+  { key: 'due', label: 'Due soon (75–89%)', test: (b) => b.fillLevel >= 75 && b.fillLevel < 90 },
+  { key: 'all', label: 'All bins', test: () => true },
+  { key: 'route', label: 'On route', test: (b) => b.onRoute },
+];
+
+// Same glyph as <Icon name="bin" />, inlined because Leaflet divIcons take HTML strings.
+const BIN_SVG =
+  '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">' +
+  '<path d="M5 8.5h14l-1.3 11a1.5 1.5 0 0 1-1.5 1.3H7.8a1.5 1.5 0 0 1-1.5-1.3Z"/><path d="M4 8.5h16M9.5 8.5 10 5h4l.5 3.5"/></svg>';
+
+const esc = (s) =>
+  String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]);
+
+function pinIcon(bin, selected, dim) {
+  const critical = bin.fillLevel >= 90;
+  const callout = selected
+    ? `<div class="bm-callout"><strong>${esc(bin.code)}</strong><span>${esc(bin.location)} · <span class="tabular">${Math.round(bin.fillLevel)}%</span> &nbsp;<span class="tabular">${esc(bin.estKg)}kg</span></span></div>`
+    : '';
+  const html =
+    `<div class="bm-pin${critical ? ' is-critical' : ''}${dim ? ' is-dim' : ''}${selected ? ' is-selected' : ''}">` +
+    `<span class="bm-pin-disc">${BIN_SVG}${bin.source === 'live' ? '<i class="bm-pin-live"></i>' : ''}</span>` +
+    `<i class="bm-pin-dot"></i>${callout}</div>`;
+  return L.divIcon({ html, className: 'bm-pin-wrap', iconSize: [34, 44], iconAnchor: [17, 40] });
+}
+
+const BinMarker = memo(function BinMarker({ bin, selected, dim, onSelect }) {
+  const { fillLevel, source, code, location, estKg } = bin;
+  const icon = useMemo(
+    () => pinIcon({ fillLevel, source, code, location, estKg }, selected, dim),
+    [fillLevel, source, code, location, estKg, selected, dim],
+  );
+  const handlers = useMemo(() => ({ click: () => onSelect(bin.id) }), [onSelect, bin.id]);
+  return (
+    <Marker
+      position={[bin.lat, bin.lng]}
+      icon={icon}
+      zIndexOffset={selected ? 1000 : critical(fillLevel) ? 400 : 0}
+      eventHandlers={handlers}
+      keyboard={false}
+    />
+  );
+});
+const critical = (f) => f >= 90;
+
+const depotIcon = L.divIcon({
+  html: '<span class="bm-depot" title="Depot"></span>',
+  className: 'bm-pin-wrap',
+  iconSize: [16, 16],
+  iconAnchor: [8, 8],
+});
+
+function ClearOnBackground({ onSelect }) {
+  useMapEvents({ click: () => onSelect(null) });
+  return null;
+}
+
+export default function BinMap({ bins, route, selectedId, onSelect, searchInputRef, follow = true }) {
+  const wrapRef = useRef(null);
+  const [map, setMap] = useState(null);
+  const [sortKey, setSortKey] = useState('all');
+  const [query, setQuery] = useState('');
+  const [focused, setFocused] = useState(false);
+  const [open, setOpen] = useState(false);
+  const [active, setActive] = useState(0);
+  const [fullscreen, setFullscreen] = useState(false);
+  const fitted = useRef(false);
+  const binsRef = useRef(bins);
+
+  useEffect(() => {
+    binsRef.current = bins;
+  }, [bins]);
+
+  // Fit to all bins once, on the first data load only.
+  useEffect(() => {
+    if (!map || fitted.current || !bins.length) return;
+    fitted.current = true;
+    map.fitBounds(L.latLngBounds(bins.map((b) => [b.lat, b.lng])), { padding: [40, 40], maxZoom: 16 });
+  }, [map, bins]);
+
+  // Fly to the selection when it changes (table click, search, pin click).
+  useEffect(() => {
+    if (!map || !selectedId || !follow) return;
+    const bin = binsRef.current.find((b) => b.id === selectedId);
+    if (!bin) return;
+    const p = L.latLng(bin.lat, bin.lng);
+    if (map.getBounds().pad(-0.25).contains(p)) return;
+    map.flyTo(p, Math.max(map.getZoom(), 16), { duration: 0.9 });
+  }, [map, selectedId, follow]);
+
+  useEffect(() => {
+    const onFs = () => {
+      setFullscreen(document.fullscreenElement === wrapRef.current);
+      window.setTimeout(() => map?.invalidateSize(), 120);
+    };
+    document.addEventListener('fullscreenchange', onFs);
+    return () => document.removeEventListener('fullscreenchange', onFs);
+  }, [map]);
+
+  const toggleFullscreen = () => {
+    if (document.fullscreenElement) document.exitFullscreen?.();
+    else wrapRef.current?.requestFullscreen?.();
+  };
+
+  const sort = SORTS.find((s) => s.key === sortKey) ?? SORTS[0];
+
+  const matches = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return [];
+    return bins
+      .filter((b) => `${b.location} ${b.area} ${b.code}`.toLowerCase().includes(q))
+      .slice(0, 5);
+  }, [bins, query]);
+
+  const pick = (bin) => {
+    setQuery(bin.location);
+    setOpen(false);
+    onSelect(bin.id);
+    map?.flyTo([bin.lat, bin.lng], Math.max(map.getZoom(), 16), { duration: 0.9 });
+  };
+
+  const onKeyDown = (e) => {
+    if (e.key === 'ArrowDown' && matches.length) {
+      e.preventDefault();
+      setOpen(true);
+      setActive((i) => (i + 1) % matches.length);
+    } else if (e.key === 'ArrowUp' && matches.length) {
+      e.preventDefault();
+      setActive((i) => (i - 1 + matches.length) % matches.length);
+    } else if (e.key === 'Enter' && matches.length) {
+      e.preventDefault();
+      pick(matches[Math.min(active, matches.length - 1)]);
+    } else if (e.key === 'Escape') {
+      setOpen(false);
+    }
+  };
+
+  const showList = open && matches.length > 0;
+  const routeCoords = route?.coords ?? [];
+
+  return (
+    <div className="bm" ref={wrapRef}>
+      <div className="bm-map">
+        <MapContainer
+          ref={setMap}
+          center={CENTER}
+          zoom={15}
+          zoomControl={false}
+          scrollWheelZoom={false}
+          attributionControl
+          style={{ height: '100%', width: '100%' }}
+        >
+          <TileLayer url={TILES.url} attribution={TILES.attribution} subdomains={TILES.subdomains} maxZoom={19} />
+          <ClearOnBackground onSelect={onSelect} />
+          {routeCoords.length > 1 && (
+            <>
+              <Polyline positions={routeCoords} pathOptions={{ className: 'bm-route-casing', weight: 7, interactive: false }} />
+              <Polyline positions={routeCoords} pathOptions={{ className: 'bm-route', weight: 3, interactive: false }} />
+              <Marker position={routeCoords[0]} icon={depotIcon} keyboard={false} interactive={false} />
+            </>
+          )}
+          {bins.map((b) => (
+            <BinMarker key={b.id} bin={b} selected={b.id === selectedId} dim={!sort.test(b)} onSelect={onSelect} />
+          ))}
+        </MapContainer>
+      </div>
+
+      <div className="bm-ui">
+        <div className="bm-top">
+          <div className="bm-search" onBlur={(e) => { if (!e.currentTarget.contains(e.relatedTarget)) { setOpen(false); setFocused(false); } }}>
+            <div className="bm-pill bm-search-pill">
+              <Icon name="search" size={20} />
+              <div className="bm-search-field">
+                {!query && !focused && (
+                  <span className="bm-ghost" aria-hidden="true">
+                    <b>MSU Campus,</b> Gweru
+                  </span>
+                )}
+                <input
+                  ref={searchInputRef}
+                  type="text"
+                  role="combobox"
+                  aria-expanded={showList}
+                  aria-controls="bm-results"
+                  aria-autocomplete="list"
+                  aria-activedescendant={showList ? `bm-opt-${active}` : undefined}
+                  aria-label="Search area or bin"
+                  placeholder="Search area or bin"
+                  autoComplete="off"
+                  value={query}
+                  onFocus={() => { setFocused(true); setOpen(true); }}
+                  onChange={(e) => { setQuery(e.target.value); setOpen(true); setActive(0); }}
+                  onKeyDown={onKeyDown}
+                />
+              </div>
+            </div>
+            {showList && (
+              <ul className="bm-results" id="bm-results" role="listbox" aria-label="Matching bins">
+                {matches.map((b, i) => (
+                  <li
+                    key={b.id}
+                    id={`bm-opt-${i}`}
+                    role="option"
+                    aria-selected={i === active}
+                    className={i === active ? 'is-active' : undefined}
+                    onMouseDown={(e) => e.preventDefault()}
+                    onMouseEnter={() => setActive(i)}
+                    onClick={() => pick(b)}
+                  >
+                    <strong>{b.location}</strong>
+                    <span>{b.area} · <span className="tabular">{Math.round(b.fillLevel)}%</span></span>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </div>
+
+          <label className="bm-pill bm-sort">
+            <span className="bm-sort-label">Sort by</span>
+            <select value={sortKey} onChange={(e) => setSortKey(e.target.value)} aria-label="Sort and emphasise bins">
+              {SORTS.map((s) => (
+                <option key={s.key} value={s.key}>{s.label}</option>
+              ))}
+            </select>
+            <Icon name="chevronDown" size={18} className="bm-sort-chevron" />
+          </label>
+
+          <button
+            type="button"
+            className="bm-btn bm-fs"
+            aria-label={fullscreen ? 'Exit fullscreen map' : 'Fullscreen map'}
+            aria-pressed={fullscreen}
+            onClick={toggleFullscreen}
+          >
+            <Icon name="expand" size={20} />
+          </button>
+        </div>
+
+        <div className="bm-zoom">
+          <button type="button" className="bm-btn" aria-label="Zoom in" onClick={() => map?.zoomIn()}>
+            <Icon name="plus" size={20} />
+          </button>
+          <button type="button" className="bm-btn" aria-label="Zoom out" onClick={() => map?.zoomOut()}>
+            <Icon name="minus" size={20} />
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}

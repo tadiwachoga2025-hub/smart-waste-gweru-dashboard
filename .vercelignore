@@ -1,0 +1,11 @@
+# Never upload server credentials or local tooling with CLI deploys.
+*-firebase-adminsdk-*.json
+.env
+.env.*
+.venv
+__pycache__
+*.pyc
+engine.py
+requirements.txt
+node_modules
+dist

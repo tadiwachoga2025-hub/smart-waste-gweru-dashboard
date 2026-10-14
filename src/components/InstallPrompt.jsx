@@ -148,7 +148,7 @@ export default function InstallPrompt() {
         left: '16px',
         right: '16px',
         bottom: '16px',
-        zIndex: 1000,
+        zIndex: 2000,
       }
     : {
         position: 'fixed',
@@ -156,7 +156,7 @@ export default function InstallPrompt() {
         bottom: '24px',
         width: '360px',
         maxWidth: 'calc(100vw - 48px)',
-        zIndex: 1000,
+        zIndex: 2000,
       };
 
   return (
@@ -166,13 +166,14 @@ export default function InstallPrompt() {
       aria-label="Install Smart Waste app"
       style={{
         ...containerStyle,
-        fontFamily: 'system-ui, sans-serif',
-        backgroundColor: '#ffffff',
-        color: '#111827',
-        borderRadius: '12px',
-        boxShadow: '0 8px 30px rgba(0, 0, 0, 0.15)',
-        border: '1px solid #e5e7eb',
-        padding: '16px',
+        fontFamily: 'var(--font)',
+        backgroundColor: 'var(--c-surface-2)',
+        color: 'var(--t-primary)',
+        borderRadius: '20px',
+        boxShadow: 'var(--shadow-float)',
+        border: '1px solid var(--line-strong)',
+        padding: '18px',
+        zIndex: 'var(--z-overlay)',
       }}
     >
       <button
@@ -188,8 +189,8 @@ export default function InstallPrompt() {
           cursor: 'pointer',
           fontSize: '18px',
           lineHeight: 1,
-          color: '#6b7280',
-          padding: '4px 8px',
+          color: 'var(--t-secondary)',
+          padding: '8px 12px',
         }}
       >
         ×
@@ -204,8 +205,8 @@ export default function InstallPrompt() {
           style={{ width: '32px', height: '32px', borderRadius: '8px', flexShrink: 0 }}
         />
         <div>
-          <p style={{ margin: 0, fontWeight: '700', fontSize: '15px' }}>Install Smart Waste</p>
-          <p style={{ margin: 0, color: '#6b7280', fontSize: '13px' }}>
+          <p style={{ margin: 0, fontWeight: '500', fontSize: '16px' }}>Install Smart Waste</p>
+          <p style={{ margin: 0, color: 'var(--t-secondary)', fontSize: '13px' }}>
             Faster access, works offline
           </p>
         </div>
@@ -213,7 +214,7 @@ export default function InstallPrompt() {
 
       {iosMode ? (
         <div>
-          <p style={{ margin: '8px 0 12px 0', fontSize: '14px', color: '#374151' }}>
+          <p style={{ margin: '8px 0 12px 0', fontSize: '14px', color: 'var(--t-secondary)' }}>
             To install: tap <strong>Share</strong> → <strong>Add to Home Screen</strong>.
           </p>
           <button
@@ -221,12 +222,12 @@ export default function InstallPrompt() {
             onClick={handleDismiss}
             style={{
               width: '100%',
-              backgroundColor: '#10b981',
-              color: '#ffffff',
+              backgroundColor: 'var(--c-khaki)',
+              color: 'var(--c-khaki-ink)',
               border: 'none',
-              borderRadius: '8px',
+              borderRadius: '999px',
               padding: '10px 16px',
-              fontWeight: '600',
+              fontWeight: '500',
               fontSize: '14px',
               cursor: 'pointer',
             }}
@@ -236,7 +237,7 @@ export default function InstallPrompt() {
         </div>
       ) : (
         <div>
-          <p style={{ margin: '8px 0 12px 0', fontSize: '14px', color: '#374151' }}>
+          <p style={{ margin: '8px 0 12px 0', fontSize: '14px', color: 'var(--t-secondary)' }}>
             Add Smart Waste to your home screen for quick access to live bin levels.
           </p>
           <div style={{ display: 'flex', gap: '8px' }}>
@@ -245,12 +246,12 @@ export default function InstallPrompt() {
               onClick={handleInstall}
               style={{
                 flexGrow: 1,
-                backgroundColor: '#10b981',
-                color: '#ffffff',
+                backgroundColor: 'var(--c-khaki)',
+                color: 'var(--c-khaki-ink)',
                 border: 'none',
-                borderRadius: '8px',
+                borderRadius: '999px',
                 padding: '10px 16px',
-                fontWeight: '600',
+                fontWeight: '500',
                 fontSize: '14px',
                 cursor: 'pointer',
               }}
@@ -261,12 +262,12 @@ export default function InstallPrompt() {
               type="button"
               onClick={handleDismiss}
               style={{
-                backgroundColor: '#f3f4f6',
-                color: '#374151',
-                border: '1px solid #e5e7eb',
-                borderRadius: '8px',
+                backgroundColor: 'transparent',
+                color: 'var(--t-primary)',
+                border: '1px solid var(--line-strong)',
+                borderRadius: '999px',
                 padding: '10px 16px',
-                fontWeight: '600',
+                fontWeight: '500',
                 fontSize: '14px',
                 cursor: 'pointer',
               }}
