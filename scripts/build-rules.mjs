@@ -200,6 +200,35 @@ const rules = {
         minIntervalMinutes: { '.validate': 'newData.isNumber() && newData.val() >= 5 && newData.val() <= 1440' },
         updatedAt: { '.validate': 'newData.isNumber()' },
       },
+      // SMTP server configuration, managed from the dashboard (admin writes,
+      // engine reads via the Admin SDK). Administrators and officers may read
+      // the connection fields; the password child is admin-read-only so the
+      // secret never reaches officer clients. Whole node is admin-write only.
+      smtp: {
+        '.read': or(admin, officer),
+        '.write': admin,
+        host: { '.read': or(admin, officer), '.validate': text(253) },
+        port: { '.read': or(admin, officer), '.validate': 'newData.isNumber() && newData.val() >= 1 && newData.val() <= 65535' },
+        sender: { '.read': or(admin, officer), '.validate': text(254) },
+        security: { '.read': or(admin, officer), '.validate': oneOf('starttls', 'ssl', 'none') },
+        user: { '.read': or(admin, officer), '.validate': text(254) },
+        password: { '.read': admin, '.validate': text(500) },
+        updatedAt: { '.read': or(admin, officer), '.validate': 'newData.isNumber()' },
+      },
+      // Engine-handled test-email queue. The UI writes {status:'pending'} plus
+      // request metadata; the engine sends the test email to the current
+      // recipients, pushes an alertLog entry (type 'test'), then acks the node
+      // to sent/failed with handledAt + result. Admin-write only.
+      smtpTest: {
+        '.read': or(admin, officer),
+        '.write': admin,
+        requestedAt: { '.validate': 'newData.isNumber()' },
+        requestedByUid: { '.validate': 'newData.isString()' },
+        requestedByName: { '.validate': text(120) },
+        status: { '.validate': oneOf('pending', 'sent', 'failed') },
+        result: { '.validate': text(500) },
+        handledAt: { '.validate': 'newData.isNumber()' },
+      },
     },
 
     // Email-alert history, written by engine.py (Admin SDK). Staff can read it;

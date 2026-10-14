@@ -198,6 +198,60 @@
         "updatedAt": {
           ".validate": "newData.isNumber()"
         }
+      },
+      "smtp": {
+        ".read": "(auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'admin')) || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'officer'))",
+        ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'admin')",
+        "host": {
+          ".read": "(auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'admin')) || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'officer'))",
+          ".validate": "newData.isString() && newData.val().length <= 253"
+        },
+        "port": {
+          ".read": "(auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'admin')) || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'officer'))",
+          ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 65535"
+        },
+        "sender": {
+          ".read": "(auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'admin')) || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'officer'))",
+          ".validate": "newData.isString() && newData.val().length <= 254"
+        },
+        "security": {
+          ".read": "(auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'admin')) || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'officer'))",
+          ".validate": "['starttls','ssl','none'].contains(newData.val())"
+        },
+        "user": {
+          ".read": "(auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'admin')) || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'officer'))",
+          ".validate": "newData.isString() && newData.val().length <= 254"
+        },
+        "password": {
+          ".read": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'admin')",
+          ".validate": "newData.isString() && newData.val().length <= 500"
+        },
+        "updatedAt": {
+          ".read": "(auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'admin')) || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'officer'))",
+          ".validate": "newData.isNumber()"
+        }
+      },
+      "smtpTest": {
+        ".read": "(auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'admin')) || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'officer'))",
+        ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'admin')",
+        "requestedAt": {
+          ".validate": "newData.isNumber()"
+        },
+        "requestedByUid": {
+          ".validate": "newData.isString()"
+        },
+        "requestedByName": {
+          ".validate": "newData.isString() && newData.val().length <= 120"
+        },
+        "status": {
+          ".validate": "['pending','sent','failed'].contains(newData.val())"
+        },
+        "result": {
+          ".validate": "newData.isString() && newData.val().length <= 500"
+        },
+        "handledAt": {
+          ".validate": "newData.isNumber()"
+        }
       }
     },
     "alertLog": {
