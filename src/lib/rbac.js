@@ -59,13 +59,15 @@ export const PERMISSIONS = {
   'reports.devices': 'View device reports',
   'reports.own': 'View own reports',
   'audit.view': 'View the access log',
+  'alerts.view': 'View bin-full email alerts and their history',
+  'alerts.manage': 'Manage who receives bin-full emails, and the thresholds',
 };
 
 const ROLE_PERMISSIONS = {
-  admin: ['users.manage', 'bins.view', 'predictions.all', 'reports.all', 'audit.view'],
+  admin: ['users.manage', 'bins.view', 'predictions.all', 'reports.all', 'audit.view', 'alerts.view', 'alerts.manage'],
   officer: [
     'bins.view', 'predictions.all', 'routes.generate', 'jobs.assign', 'jobs.update.all',
-    'sensors.limited', 'complaints.review', 'reports.all',
+    'sensors.limited', 'complaints.review', 'reports.all', 'alerts.view',
   ],
   driver: ['predictions.assigned', 'jobs.update.assigned', 'reports.jobs'],
   technician: ['bins.technical', 'predictions.diagnostics', 'sensors.manage', 'reports.devices'],
@@ -116,6 +118,7 @@ const ALL_NAV = [
   { key: 'devices', view: 'devices', label: 'Devices', needs: ['sensors.manage', 'sensors.limited'] },
   { key: 'report', view: 'report', label: 'Report a problem', needs: ['complaints.submit'] },
   { key: 'reports', view: 'reports', label: 'Reports', needs: ['reports.all', 'reports.jobs', 'reports.devices', 'reports.own'] },
+  { key: 'alerts', view: 'alerts', label: 'Alerts', needs: ['alerts.view'] },
   { key: 'users', view: 'users', label: 'Users', needs: ['users.manage'] },
   { key: 'audit', view: 'audit', label: 'Access log', needs: ['audit.view'] },
 ];

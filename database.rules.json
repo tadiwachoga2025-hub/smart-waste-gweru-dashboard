@@ -173,6 +173,39 @@
         }
       }
     },
+    "settings": {
+      "alerts": {
+        ".read": "(auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'admin')) || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'officer'))",
+        ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'admin')",
+        "enabled": {
+          ".validate": "newData.isBoolean()"
+        },
+        "recipients": {
+          ".validate": "newData.hasChildren() && newData.val().length <= 10",
+          "$i": {
+            ".validate": "newData.isString() && newData.val().length <= 254 && newData.val().matches(/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/)"
+          }
+        },
+        "criticalAt": {
+          ".validate": "newData.isNumber() && newData.val() >= 50 && newData.val() <= 100"
+        },
+        "rearmBelow": {
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 99"
+        },
+        "minIntervalMinutes": {
+          ".validate": "newData.isNumber() && newData.val() >= 5 && newData.val() <= 1440"
+        },
+        "updatedAt": {
+          ".validate": "newData.isNumber()"
+        }
+      }
+    },
+    "alertLog": {
+      ".read": "(auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'admin')) || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'officer'))",
+      ".indexOn": [
+        "at"
+      ]
+    },
     "audit": {
       ".read": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'admin')",
       ".indexOn": [
