@@ -27,6 +27,14 @@ const citizen = roleIs('citizen');
 const signedInActive = `auth != null && ${active}`;
 const device = roleIs('device'); // service account for the ESP32 gateway; not a person, not in the UI
 
+// Leaf-field validation helpers. Validation lives on the leaves (not the whole
+// record) so partial updates, like a driver ticking one stop, are not rejected.
+const oneOf = (...vals) => `[${vals.map((v) => `'${v}'`).join(',')}].contains(newData.val())`;
+const text = (max) => `newData.isString() && newData.val().length <= ${max}`;
+const coord = (lim) => `newData.isNumber() && newData.val() >= -${lim} && newData.val() <= ${lim}`;
+// Server-stamped creation time: stops clients backdating records.
+const stampedNow = `newData.child('createdAt').val() === now`;
+
 const canDispatch = or(officer, granted('jobs.assign'));
 const canReviewComplaints = or(officer, granted('complaints.review'));
 const canManageSensors = or(technician, granted('sensors.manage'));
@@ -80,9 +88,14 @@ const rules = {
       $jobId: {
         '.read': or(admin, officer, `${driver} && data.child('driverUid').val() === auth.uid`),
         '.write': canDispatch,
+        priority: { '.validate': oneOf('normal', 'high', 'urgent') },
+        title: { '.validate': text(120) },
+        notes: { '.validate': text(500) },
+        driverUid: { '.validate': 'newData.isString()' },
         // Drivers move their own job through its lifecycle, and tick stops.
         status: {
           '.write': `${driver} && data.parent().child('driverUid').val() === auth.uid && ((data.val() === 'assigned' && newData.val() === 'started') || (data.val() === 'started' && newData.val() === 'completed'))`,
+          '.validate': oneOf('assigned', 'started', 'completed', 'cancelled'),
         },
         startedAt: { '.write': `${driver} && data.parent().child('driverUid').val() === auth.uid` },
         completedAt: { '.write': `${driver} && data.parent().child('driverUid').val() === auth.uid` },
@@ -104,8 +117,11 @@ const rules = {
         '.read': or(admin, officer, `${driver} && data.child('driverUid').val() === auth.uid`),
         '.write': or(
           canDispatch,
-          `${driver} && !data.exists() && newData.child('driverUid').val() === auth.uid`,
+          `${driver} && !data.exists() && newData.child('driverUid').val() === auth.uid && newData.child('status').val() === 'open' && ${stampedNow} && !newData.child('resolvedBy').exists()`,
         ),
+        type: { '.validate': oneOf('inaccessible-bin', 'breakdown', 'other') },
+        status: { '.validate': oneOf('open', 'resolved') },
+        note: { '.validate': text(1000) },
       },
     },
 
@@ -117,21 +133,36 @@ const rules = {
         '.read': or(admin, officer, `${citizen} && data.child('citizenUid').val() === auth.uid`),
         '.write': or(
           canReviewComplaints,
-          `${citizen} && !data.exists() && newData.child('citizenUid').val() === auth.uid && newData.child('status').val() === 'new'`,
+          `${citizen} && !data.exists() && newData.child('citizenUid').val() === auth.uid && newData.child('status').val() === 'new' && ${stampedNow} && !newData.child('officerNote').exists() && !newData.child('reviewedBy').exists() && !newData.child('resolvedAt').exists() && !newData.child('jobId').exists()`,
         ),
+        type: { '.validate': oneOf('overflowing_bin', 'missed_collection', 'other') },
+        status: { '.validate': oneOf('new', 'reviewing', 'assigned', 'resolved', 'rejected') },
+        note: { '.validate': text(2000) },
+        officerNote: { '.validate': text(1000) },
+        address: { '.validate': text(300) },
+        lat: { '.validate': coord(90) },
+        lng: { '.validate': coord(180) },
+        // Photos are compressed data URLs (~150 KB); cap the stored size.
+        photo: { '.validate': `newData.isString() && newData.val().length <= 260000 && newData.val().beginsWith('data:image/')` },
       },
     },
 
     // Truck registry, managed by whoever dispatches.
     trucks: {
       '.read': or(admin, officer),
-      $truckId: { '.write': canDispatch },
+      $truckId: {
+        '.write': canDispatch,
+        status: { '.validate': oneOf('available', 'in-service', 'maintenance') },
+      },
     },
 
     // Sensor registry and maintenance history.
     devices: {
       '.read': or(admin, officer, technician),
-      $deviceId: { '.write': canManageSensors },
+      $deviceId: {
+        '.write': canManageSensors,
+        status: { '.validate': oneOf('active', 'faulty', 'replaced', 'retired') },
+      },
     },
     maintenance: {
       '.read': or(admin, officer, technician),
@@ -140,8 +171,10 @@ const rules = {
         // Technicians record work; officers may only flag a fault ("limited").
         '.write': or(
           canManageSensors,
-          `${officer} && !data.exists() && newData.child('type').val() === 'report'`,
+          `${officer} && !data.exists() && newData.child('type').val() === 'report' && ${stampedNow}`,
         ),
+        type: { '.validate': oneOf('inspection', 'repair', 'replacement', 'calibration', 'report') },
+        note: { '.validate': text(1000) },
       },
     },
 
@@ -151,7 +184,15 @@ const rules = {
       '.read': admin,
       '.indexOn': ['at'],
       $aid: {
-        '.write': `${signedInActive} && !data.exists() && newData.child('actorUid').val() === auth.uid`,
+        // Append-only, and the actor can only describe themselves truthfully:
+        // uid, role and name come from their own profile, time from the server.
+        '.write': `${signedInActive} && !data.exists() && newData.child('actorUid').val() === auth.uid && newData.child('actorRole').val() === ${me}.child('role').val() && newData.child('at').val() === now`,
+        '.validate': `newData.hasChildren(['at', 'actorUid', 'actorRole', 'action'])`,
+        actorName: { '.validate': text(120) },
+        action: { '.validate': `newData.isString() && newData.val().length <= 60` },
+        target: { '.validate': text(200) },
+        detail: { '.validate': text(500) },
+        $other: { '.validate': false },
       },
     },
   },
