@@ -30,7 +30,8 @@ function Fitter({ points, nonce }) {
   const sig = points.map((p) => p.join(',')).join('|');
   useEffect(() => {
     if (!sig) return;
-    const pts = sig.split('|').map((s) => s.split(',').map(Number));
+    const pts = sig.split('|').map((s) => s.split(',').map(Number)).filter((p) => p.length === 2 && p.every(Number.isFinite));
+    if (pts.length === 0) return;
     if (pts.length === 1) map.setView(pts[0], 15);
     else map.fitBounds(L.latLngBounds(pts), { padding: [56, 56] });
   }, [map, sig, nonce]);
@@ -56,7 +57,12 @@ function Controls({ onRecenter }) {
 
 export default function RouteMap({ bins, route, selected, nonce, onSelect, onRecenter }) {
   const plotted = bins.filter((b) => Number.isFinite(b.lat) && Number.isFinite(b.lng));
-  const stopPts = route.stops.map((s) => s.coords);
+  const stops = Array.isArray(route?.stops) ? route.stops : [];
+  const coords = Array.isArray(route?.coords) ? route.coords : [];
+  // One malformed point throws inside Leaflet and blanks the whole map, so
+  // only finite pairs reach the polyline and the fitter.
+  const line = coords.filter((p) => Array.isArray(p) && p.length === 2 && p.every(Number.isFinite));
+  const stopPts = stops.map((s) => s.coords).filter((p) => Array.isArray(p) && p.length === 2 && p.every(Number.isFinite));
   const fitPts = stopPts.length ? stopPts : plotted.map((b) => [b.lat, b.lng]);
 
   return (
@@ -69,23 +75,23 @@ export default function RouteMap({ bins, route, selected, nonce, onSelect, onRec
         attributionControl
         className="fv-map__canvas"
       >
-        <TileLayer url={TILES.url} attribution={TILES.attribution} subdomains={TILES.subdomains} maxZoom={19} />
-        {route.coords.length >= 2 ? (
-          <>
-            <Polyline
-              positions={route.coords}
-              className="fv-route-halo"
-              interactive={false}
-              pathOptions={{ color: '#b0e454', weight: 9, opacity: 0.9, lineCap: 'round' }}
-            />
-            <Polyline
-              positions={route.coords}
-              className="fv-route-line"
-              interactive={false}
-              pathOptions={{ color: '#0d0d0d', weight: 4, lineCap: 'round' }}
-            />
-          </>
-        ) : null}
+          <TileLayer url={TILES.url} attribution={TILES.attribution} subdomains={TILES.subdomains} maxZoom={19} />
+          {line.length >= 2 ? (
+            <>
+              <Polyline
+                positions={line}
+                className="fv-route-halo"
+                interactive={false}
+                pathOptions={{ color: '#b0e454', weight: 9, opacity: 0.9, lineCap: 'round' }}
+              />
+              <Polyline
+                positions={line}
+                className="fv-route-line"
+                interactive={false}
+                pathOptions={{ color: '#0d0d0d', weight: 4, lineCap: 'round' }}
+              />
+            </>
+          ) : null}
         {plotted.map((b) => (
           <Marker
             key={b.id}

@@ -40,7 +40,7 @@ export default function ProgressCard({ metrics }) {
   return (
     <section className="card pc-card" aria-label="Network fill level">
       <div className="card-head">
-        <h2 className="card-title">Network Fill Level</h2>
+        <h2 className="card-title">Network fill level</h2>
         <div className="pc-head-right">
           <button type="button" className="card-expand" aria-label="Open network fill level details">
             <Icon name="arrowUpRight" size={20} />

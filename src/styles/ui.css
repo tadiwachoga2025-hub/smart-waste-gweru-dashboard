@@ -27,7 +27,7 @@
   gap: var(--sp-3) var(--sp-6);
   padding: var(--sp-2) var(--sp-2) 0;
 }
-.ui-head__text { min-width: 0; }
+.ui-head__text { flex: 1 1 240px; min-width: 0; }
 .ui-eyebrow {
   margin: 0 0 var(--sp-1);
   color: var(--accent-text);
@@ -49,7 +49,12 @@
   color: var(--t-secondary);
   font-size: var(--fs-md);
 }
-.ui-head__actions { display: flex; flex-wrap: wrap; gap: var(--sp-2); }
+.ui-head__actions { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--sp-2); margin-left: auto; }
+@media (max-width: 680px) {
+  .ui-head { flex-direction: column; align-items: stretch; }
+  .ui-head__actions { margin-left: 0; flex-direction: column; align-items: stretch; }
+  .ui-head__actions .ui-btn { width: 100%; }
+}
 
 .ui-grid { display: grid; gap: var(--sp-4); }
 .ui-grid--2 { grid-template-columns: repeat(2, minmax(0, 1fr)); }

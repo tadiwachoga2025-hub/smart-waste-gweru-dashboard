@@ -210,6 +210,20 @@ const rules = {
       '.indexOn': ['at'],
     },
 
+    // Engine/system trail: training runs, collection cycles, errors and
+    // lifecycle events, written by engine.py via the Admin SDK. Together with
+    // /alertLog this is the EXTERNAL audit log in the dashboard. Staff read;
+    // no client can write or edit.
+    engineLog: {
+      '.read': or(admin, officer),
+      '.indexOn': ['at'],
+    },
+
+    // Latest engine heartbeat (liveness + last-cycle metrics). Same readers.
+    engineStatus: {
+      '.read': or(admin, officer),
+    },
+
     // Append-only access log. Anyone signed in may add their own entries;
     // nobody can edit or delete; only administrators can read.
     audit: {

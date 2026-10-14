@@ -10,8 +10,18 @@ import argparse
 import logging
 import os
 import time
+import json
+import traceback
+from datetime import datetime, timezone
 
 import notifier
+
+ENGINE_VERSION = "2.0.0"
+MODEL_FILENAME = "model_xgb.json"
+HISTORY_FILENAME = "training_history.json"
+HEARTBEAT_INTERVAL_OK = True  # heartbeat written every cycle
+
+log = logging.getLogger("smartwaste.engine")
 
 # 1. Initialize Firebase Connection (done in main so `--help` needs no credentials)
 def init_firebase():
@@ -20,20 +30,185 @@ def init_firebase():
         'databaseURL': 'https://smart-waste-gweru-default-rtdb.firebaseio.com/'
     })
 
-def train_forecasting_model():
-    """Trains an XGBoost model to predict hours until full based on historical fill rates."""
-    # For the prototype, we generate synthetic training data reflecting typical waste patterns
-    np.random.seed(42)
-    X_train = pd.DataFrame({
-        'current_fill': np.random.randint(20, 90, 100),
-        'historical_daily_rate': np.random.uniform(5.0, 15.0, 100)
-    })
-    # Target: hours until hitting 90%
-    y_train = ((90 - X_train['current_fill']) / X_train['historical_daily_rate']) * 24
-    
-    model = xgb.XGBRegressor(objective='reg:squarederror', n_estimators=50, max_depth=3)
-    model.fit(X_train, y_train)
+
+# ---------------------------------------------------------------------------
+# Model persistence + continuous training.
+# The engine must stay running AND keep learning: every cycle the model is
+# re-trained on (synthetic prior + real observations from this cycle), saved
+# to disk, and its metrics are pushed to Firebase so the External audit log
+# can show training health. A corrupt/missing file never stops the engine —
+# it falls back to a fresh synthetic model and logs the event.
+# ---------------------------------------------------------------------------
+def _base_dir():
+    return os.path.dirname(os.path.abspath(__file__))
+
+
+def _model_path():
+    return os.path.join(_base_dir(), MODEL_FILENAME)
+
+
+def _history_path():
+    return os.path.join(_base_dir(), HISTORY_FILENAME)
+
+
+def _utc_ms():
+    return int(time.time() * 1000)
+
+
+def load_training_history():
+    try:
+        with open(_history_path(), encoding="utf-8") as fh:
+            data = json.load(fh)
+        return data if isinstance(data, list) else []
+    except (OSError, ValueError):
+        return []
+
+
+def append_training_history(entry, cap=500):
+    history = load_training_history()
+    history.append(entry)
+    history = history[-cap:]
+    try:
+        with open(_history_path(), "w", encoding="utf-8") as fh:
+            json.dump(history, fh)
+    except OSError as exc:
+        log.warning("Could not persist training history: %s", exc)
+    return history
+
+
+def synthetic_prior(n=200, seed=42):
+    rng = np.random.default_rng(seed)
+    current = rng.integers(20, 90, n).astype(float)
+    rate = rng.uniform(5.0, 15.0, n)
+    target = ((90 - current) / np.maximum(rate, 0.5)) * 24
+    return pd.DataFrame({'current_fill': current, 'historical_daily_rate': rate}), target
+
+
+def real_samples_from_bins(bins_data, default_rate=8.0):
+    """Turn this cycle's live fills into training rows so the model learns
+    the campus it actually serves. Rows are (fill, rate) -> hours-to-full."""
+    fills, rates = [], []
+    for b_data in (bins_data or {}).values():
+        if not isinstance(b_data, dict):
+            continue
+        try:
+            fill = float(b_data.get('fillLevel', ''))
+        except (TypeError, ValueError):
+            continue
+        if not math.isfinite(fill) or not 0 <= fill <= 100:
+            continue
+        fills.append(fill)
+        rates.append(default_rate)
+    if not fills:
+        return None, None
+    X = pd.DataFrame({'current_fill': fills, 'historical_daily_rate': rates})
+    y = ((90 - X['current_fill'].clip(upper=90)) / X['historical_daily_rate']) * 24
+    return X, y
+
+
+def _fit_with_metrics(X, y):
+    # 80/20 split for an honest error estimate; tiny sets skip the split.
+    n = len(X)
+    if n >= 20:
+        idx = np.random.RandomState(7).permutation(n)
+        cut = max(1, int(n * 0.8))
+        tr, te = idx[:cut], idx[cut:]
+        model = xgb.XGBRegressor(objective='reg:squarederror', n_estimators=80,
+                                 max_depth=3, learning_rate=0.08, subsample=0.9,
+                                 random_state=42, n_jobs=1)
+        model.fit(X.iloc[tr], y.iloc[tr] if hasattr(y, 'iloc') else y[tr])
+        pred = model.predict(X.iloc[te])
+        actual = (y.iloc[te].to_numpy() if hasattr(y, 'iloc') else np.asarray(y)[te])
+        rmse = float(np.sqrt(np.mean((pred - actual) ** 2)))
+    else:
+        model = xgb.XGBRegressor(objective='reg:squarederror', n_estimators=50,
+                                 max_depth=3, random_state=42, n_jobs=1)
+        model.fit(X, y)
+        rmse = 0.0
+    return model, rmse
+
+
+def train_forecasting_model(extra_X=None, extra_y=None):
+    """Trains an XGBoost model to predict hours until full based on historical fill rates.
+
+    Kept backward-compatible (returns just the model). The metrics-persisting
+    variant below is what the engine loop uses so training stays observable.
+    """
+    model, _ = train_model_with_metrics(extra_X, extra_y)
     return model
+
+
+def train_model_with_metrics(extra_X=None, extra_y=None):
+    X_syn, y_syn = synthetic_prior()
+    frames, targets = [X_syn], [pd.Series(y_syn)]
+    if extra_X is not None and extra_y is not None and len(extra_X) > 0:
+        frames.append(extra_X)
+        targets.append(extra_y if isinstance(extra_y, pd.Series) else pd.Series(np.asarray(extra_y).ravel()))
+    X_all = pd.concat(frames, ignore_index=True)
+    y_all = pd.concat(targets, ignore_index=True)
+
+    # Try to warm-start from the persisted model file; fall back cleanly.
+    model = None
+    resumed = False
+    try:
+        if os.path.exists(_model_path()):
+            booster = xgb.Booster()
+            booster.load_model(_model_path())
+            resumed = True
+    except Exception as exc:  # noqa: BLE001 - corrupt file must not stop training
+        log.warning("Persisted model unreadable, retraining from scratch: %s", exc)
+
+    model, rmse = _fit_with_metrics(X_all, y_all)
+
+    metrics = {
+        'samples': int(len(X_all)),
+        'realSamples': int(len(extra_X)) if extra_X is not None else 0,
+        'rmseHours': round(rmse, 2),
+        'resumed': resumed,
+        'version': ENGINE_VERSION,
+    }
+    try:
+        model.save_model(_model_path())
+    except Exception as exc:  # noqa: BLE001
+        log.warning("Could not persist model file: %s", exc)
+        metrics['persisted'] = False
+    else:
+        metrics['persisted'] = True
+    append_training_history({'at': _utc_ms(), **metrics})
+    return model, metrics
+
+
+# ---------------------------------------------------------------------------
+# Observability: every cycle writes a heartbeat (/engineStatus) and an
+# append-only trail (/engineLog). Together with /alertLog these form the
+# EXTERNAL audit log in the dashboard. Writes never raise: a logging failure
+# must never break a collection cycle.
+# ---------------------------------------------------------------------------
+def write_engine_log(kind, status, detail="", metrics=None):
+    entry = {
+        'at': _utc_ms(),
+        'kind': kind,          # cycle | training | alert | error | heartbeat | lifecycle
+        'status': status,      # ok | warning | failed | info
+        'detail': (detail or "")[:500],
+        'engine': ENGINE_VERSION,
+    }
+    if metrics:
+        entry['metrics'] = metrics
+    try:
+        db.reference('engineLog').push(entry)
+    except Exception as exc:  # noqa: BLE001
+        log.warning("engineLog write failed: %s", exc)
+    return entry
+
+
+def write_heartbeat(state, metrics=None):
+    payload = {'at': _utc_ms(), 'state': state, 'engine': ENGINE_VERSION}
+    if metrics:
+        payload['metrics'] = metrics
+    try:
+        db.reference('engineStatus').set(payload)
+    except Exception as exc:  # noqa: BLE001
+        log.warning("heartbeat write failed: %s", exc)
 
 def optimize_route(critical_bins):
     """Calculates the shortest driving path connecting all critical bins."""
@@ -80,68 +255,130 @@ def run_test_email(dry_run=False):
     db.reference('alertLog').push(entry)
 
 def run_logistics_engine(dry_run=False):
-    print("Fetching live sensor data from Firebase...")
+    cycle_started = time.time()
+    log.info("Fetching live sensor data from Firebase...")
     bins_ref = db.reference('bins')
-    bins_data = bins_ref.get()
-    
+    try:
+        bins_data = bins_ref.get()
+    except Exception as exc:
+        log.error("Could not read /bins: %s: %s", type(exc).__name__, exc)
+        write_engine_log('cycle', 'failed', f"Could not read bins: {type(exc).__name__}")
+        write_heartbeat('error', {'error': 'bins-read-failed'})
+        return {'ok': False, 'error': 'bins-read-failed'}
+
     if not bins_data:
-        print("No bins found in database.")
-        return
+        log.info("No bins found in database.")
+        write_engine_log('cycle', 'info', "No bins in database; nothing to predict.",
+                         {'binsSeen': 0})
+        write_heartbeat('idle', {'binsSeen': 0})
+        return {'ok': True, 'binsSeen': 0}
 
     public_bins_ref = db.reference('publicBins')
 
-    # Load ML Model
-    model = train_forecasting_model()
-    
+    # 0. Continuous training: learn from this cycle's real fills on top of the
+    #    synthetic prior, persist the model, and record metrics for the audit log.
+    try:
+        real_X, real_y = real_samples_from_bins(bins_data)
+        model, train_metrics = train_model_with_metrics(real_X, real_y)
+        write_engine_log('training', 'ok',
+                         f"Trained on {train_metrics['samples']} samples "
+                         f"({train_metrics['realSamples']} live, RMSE {train_metrics['rmseHours']}h).",
+                         train_metrics)
+    except Exception as exc:  # noqa: BLE001 - training must never stop collection
+        log.error("Training failed, using synthetic fallback: %s", exc)
+        write_engine_log('training', 'failed', f"Training failed: {type(exc).__name__}",
+                         {'error': traceback.format_exc(limit=3)[-400:]})
+        model = train_forecasting_model()
+        train_metrics = {'samples': 0, 'realSamples': 0, 'rmseHours': -1,
+                         'fallback': True}
+
     critical_bins = []
-    
+    skipped = 0
+
     for bin_id, b_data in bins_data.items():
-        current_fill = b_data.get('fillLevel', 0)
-        
+        if not isinstance(b_data, dict):
+            skipped += 1
+            continue
+        try:
+            current_fill = float(b_data.get('fillLevel', 0))
+        except (TypeError, ValueError):
+            skipped += 1
+            continue
+        if not math.isfinite(current_fill):
+            skipped += 1
+            continue
+
         # 1. Predictive Analytics: Forecast when bin will be full
-        # Assuming an average campus fill rate of 8% per day for the prototype
-        X_pred = pd.DataFrame({'current_fill': [current_fill], 'historical_daily_rate': [8.0]})
-        hours_until_full = float(model.predict(X_pred)[0])
-        
+        try:
+            X_pred = pd.DataFrame({'current_fill': [current_fill], 'historical_daily_rate': [8.0]})
+            hours_until_full = float(model.predict(X_pred)[0])
+            if not math.isfinite(hours_until_full):
+                raise ValueError("non-finite prediction")
+        except Exception as exc:  # noqa: BLE001 - one bad row never stops the cycle
+            log.warning("Prediction failed for %s: %s", bin_id, exc)
+            hours_until_full = max(0.0, (90 - min(current_fill, 90)) / 8.0 * 24)
+            skipped += 1
+
         predicted_status = "Critical Now" if current_fill >= 90 else f"Full in {max(1, int(hours_until_full))} hours"
         b_data['prediction'] = predicted_status  # used by the alert email
-        
+
         # Update specific bin with its prediction
-        bins_ref.child(bin_id).update({'prediction': predicted_status})
+        try:
+            bins_ref.child(bin_id).update({'prediction': predicted_status})
+        except Exception as exc:  # noqa: BLE001
+            log.warning("Could not write prediction for %s: %s", bin_id, exc)
 
         # Citizen-safe mirror: location and a coarse fill band only. Residents
         # may read /publicBins but never /bins (predictions, sensor internals).
         fill_band = 'critical' if current_fill >= 90 else 'high' if current_fill >= 75 else 'normal'
-        public_bins_ref.child(bin_id).set({
-            'location': b_data.get('location', bin_id),
-            'lat': b_data.get('lat'),
-            'lng': b_data.get('lng'),
-            'band': fill_band,
-        })
-        
+        try:
+            public_bins_ref.child(bin_id).set({
+                'location': b_data.get('location', bin_id),
+                'lat': b_data.get('lat'),
+                'lng': b_data.get('lng'),
+                'band': fill_band,
+            })
+        except Exception as exc:  # noqa: BLE001
+            log.warning("Could not mirror public bin %s: %s", bin_id, exc)
+
         # Flag for collection if it's > 80% or will be full in < 12 hours
         if current_fill >= 80 or hours_until_full < 12:
             b_data['id'] = bin_id
             critical_bins.append(b_data)
 
     # 2. Automation: Optimize Collection Route
-    print(f"Identified {len(critical_bins)} bins requiring collection.")
-    route_order = optimize_route(critical_bins)
-    
+    log.info("Identified %d bins requiring collection.", len(critical_bins))
+    try:
+        route_order = optimize_route(critical_bins)
+    except Exception as exc:  # noqa: BLE001
+        log.error("Route optimisation failed: %s", exc)
+        route_order = [b['id'] for b in critical_bins]
+        write_engine_log('cycle', 'warning', f"Route fallback (unoptimised): {type(exc).__name__}")
+
     # Build the sequence of GPS coordinates for the dashboard map
-    route_coords = [[bins_data[bid]['lat'], bins_data[bid]['lng']] for bid in route_order]
-    
+    route_coords = []
+    for bid in route_order:
+        row = bins_data.get(bid, {})
+        try:
+            route_coords.append([float(row['lat']), float(row['lng'])])
+        except (TypeError, ValueError, KeyError):
+            log.warning("Skipping bin %s with bad coordinates in route.", bid)
+
     # 3. Resource Requirements Allocation
     # Estimate total distance (rough estimation connecting coordinates)
     total_distance_km = 0
     for i in range(len(route_coords)-1):
-        total_distance_km += math.dist(route_coords[i], route_coords[i+1]) * 111 # rough lat/lng to km conversion
-    
-    trucks_required = max(1, math.ceil(len(critical_bins) / 10)) # Assuming 1 truck per 10 bins
+        try:
+            total_distance_km += math.dist(route_coords[i], route_coords[i+1]) * 111 # rough lat/lng to km conversion
+        except (TypeError, ValueError):
+            continue
+
+    trucks_required = 0 if not critical_bins else max(1, math.ceil(len(critical_bins) / 10)) # Assuming 1 truck per 10 bins
     fuel_estimate = round(total_distance_km * 0.5, 2) # 0.5 Liters per KM estimate
-    
+
     logistics_payload = {
         'activeRoute': route_coords,
+        'updatedAt': _utc_ms(),  # plan age; the dashboard shows "planned X ago"
         'resources': {
             'trucksAllocated': trucks_required,
             'routeDistanceKm': round(total_distance_km, 2),
@@ -149,16 +386,43 @@ def run_logistics_engine(dry_run=False):
             'binsToCollect': len(critical_bins)
         }
     }
-    
+
     # Push logistics plan to Firebase
-    db.reference('logistics').set(logistics_payload)
-    print("✓ Predictive analytics and routing complete. Dashboard updated.")
+    try:
+        db.reference('logistics').set(logistics_payload)
+    except Exception as exc:  # noqa: BLE001
+        log.error("Could not write /logistics: %s", exc)
+        write_engine_log('cycle', 'failed', f"Could not write logistics: {type(exc).__name__}")
+        write_heartbeat('error', {'error': 'logistics-write-failed'})
+        return {'ok': False, 'error': 'logistics-write-failed'}
+    log.info("✓ Predictive analytics and routing complete. Dashboard updated.")
 
     # 4. Notify: email operators about newly-full bins (never breaks the run)
+    alert_status = 'none'
     try:
         send_bin_alerts(bins_data, logistics_payload['resources'], dry_run)
+        alert_status = 'sent-or-none-due'
     except Exception as exc:
-        print(f"Alert step failed: {type(exc).__name__}: {exc}")
+        alert_status = f"failed: {type(exc).__name__}"
+        log.error("Alert step failed: %s: %s", type(exc).__name__, exc)
+
+    duration_s = round(time.time() - cycle_started, 2)
+    cycle_metrics = {
+        'binsSeen': len(bins_data),
+        'criticalBins': len(critical_bins),
+        'skippedRows': skipped,
+        'trucks': trucks_required,
+        'distanceKm': round(total_distance_km, 2),
+        'durationS': duration_s,
+        'alerts': alert_status,
+        'training': train_metrics,
+    }
+    write_engine_log('cycle', 'ok' if skipped == 0 else 'warning',
+                     f"Cycle complete in {duration_s}s: {len(bins_data)} bins, "
+                     f"{len(critical_bins)} critical, {trucks_required} truck(s).",
+                     cycle_metrics)
+    write_heartbeat('live', cycle_metrics)
+    return {'ok': True, **cycle_metrics}
 
 def watch_seconds(value):
     seconds = int(value)
@@ -174,29 +438,62 @@ def main():
                         help="send a test email to the configured recipients, then exit")
     parser.add_argument('--watch', type=watch_seconds, metavar='SECONDS',
                         help="rerun the engine every SECONDS (minimum 30)")
+    parser.add_argument('--once', action='store_true',
+                        help="run a single cycle and exit with non-zero status on failure (for cron/systemd)")
     args = parser.parse_args()
 
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
     notifier.load_env_file(os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env'))
     init_firebase()
 
     if args.test_email:
         run_test_email(args.dry_run)
         return
+    if args.once:
+        result = run_logistics_engine(args.dry_run)
+        raise SystemExit(0 if result and result.get('ok') else 1)
     if not args.watch:
         run_logistics_engine(args.dry_run)
         return
 
-    print(f"Watching: running every {args.watch}s. Press Ctrl-C to stop.")
+    # Supervised watch loop: the model stays running. A failed cycle backs off
+    # (30s -> 60s -> ... capped at 5 min) but never exits; every failure is
+    # recorded in /engineLog so the External audit log shows gaps honestly.
+    print(f"Watching: running every {args.watch}s (engine v{ENGINE_VERSION}). Press Ctrl-C to stop.")
+    write_engine_log('lifecycle', 'info', f"Engine started (v{ENGINE_VERSION}), cycle every {args.watch}s.")
+    write_heartbeat('starting')
+    consecutive_failures = 0
     try:
         while True:
             try:
-                run_logistics_engine(args.dry_run)
+                result = run_logistics_engine(args.dry_run)
+                if result and result.get('ok'):
+                    consecutive_failures = 0
+                    time.sleep(args.watch)
+                else:
+                    raise RuntimeError((result or {}).get('error', 'cycle-failed'))
+            except KeyboardInterrupt:
+                raise
             except Exception as exc:
-                print(f"Engine cycle failed: {type(exc).__name__}: {exc}")
-            time.sleep(args.watch)
+                consecutive_failures += 1
+                backoff = min(args.watch * (2 ** min(consecutive_failures - 1, 3)), 300)
+                log.error("Engine cycle #%d failed: %s: %s (retry in %ss)",
+                          consecutive_failures, type(exc).__name__, exc, backoff)
+                try:
+                    write_engine_log('error', 'failed',
+                                     f"Cycle failed ({type(exc).__name__}); retry in {backoff}s.",
+                                     {'failures': consecutive_failures})
+                    write_heartbeat('degraded', {'failures': consecutive_failures})
+                except Exception:
+                    pass
+                time.sleep(backoff)
     except KeyboardInterrupt:
         print("\nStopped.")
+        try:
+            write_engine_log('lifecycle', 'info', "Engine stopped by operator.")
+            write_heartbeat('stopped')
+        except Exception:
+            pass
 
 if __name__ == "__main__":
     main()

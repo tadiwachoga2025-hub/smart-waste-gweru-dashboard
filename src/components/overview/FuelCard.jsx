@@ -32,7 +32,7 @@ export default function FuelCard({ route }) {
   return (
     <section className="card fu-card" ref={root} aria-label="Route and fuel">
       <div className="card-head">
-        <h2 className="card-title">Route &amp; Fuel</h2>
+        <h2 className="card-title">Route &amp; fuel</h2>
         <div className="pc-head-right">
           <button type="button" className="card-expand" aria-label="Open route and fuel details">
             <Icon name="arrowUpRight" size={20} />

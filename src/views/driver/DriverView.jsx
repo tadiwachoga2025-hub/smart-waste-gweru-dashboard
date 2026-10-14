@@ -213,7 +213,7 @@ export default function DriverView() {
   return (
     <Page label="My jobs">
       <>
-        <PageHead eyebrow={profile?.name ? `Driver · ${profile.name}` : 'Driver'} title="My jobs" />
+        <PageHead eyebrow={profile?.name ? `Driver · ${profile.name}` : 'Driver'} title="My jobs" sub="Follow your assigned route, tick off stops and report issues from the road." />
 
         <DataError error={jobsQ.error} />
 

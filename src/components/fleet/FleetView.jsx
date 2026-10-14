@@ -1,6 +1,7 @@
 import { useMemo, useState } from 'react';
 import { motion, useReducedMotion } from 'motion/react';
 import Icon from '../Icon';
+import { EmptyState, Page, PageHead } from '../ui';
 import { fadeUp, stagger } from '../../lib/motion';
 import FleetList from './FleetList';
 import RouteMap from './RouteMap';
@@ -21,14 +22,36 @@ export default function FleetView({ data }) {
     return [...onRoute, ...rest];
   }, [bins]);
 
-  if (!route) return null;
+  // Never a blank page: without route data the officer still gets orientation
+  // and a way forward (Impeccable Operate — every screen answers "where am I,
+  // what now").
+  if (!route) {
+    return (
+      <Page label="Route">
+        <PageHead
+          eyebrow="Waste management officer"
+          title="AI collection route"
+          sub="The route the AI engine planned from live bin levels."
+        />
+        <EmptyState icon="route" title="No route data">
+          The AI engine has not published a route yet. It will appear here after the next engine run.
+        </EmptyState>
+      </Page>
+    );
+  }
 
+  const stops = Array.isArray(route.stops) ? route.stops : [];
+  // Resources may arrive partial or as strings from hand edits; coerce like
+  // RouteSummary does so the header never prints "undefined km".
+  const distanceKm = Number(route.distanceKm) || 0;
+  const fuelLitres = Number(route.fuelLitres) || 0;
+  const trucks = Number(route.trucks) || 0;
   const selected = ordered.find((b) => b.id === selectedId) || ordered[0] || null;
-  const n = route.stops.length;
+  const n = stops.length;
   const active = n > 0;
 
   return (
-    <motion.main
+    <motion.div
       className="fv"
       variants={stagger(0.07)}
       initial={reduce ? false : 'hidden'}
@@ -51,13 +74,13 @@ export default function FleetView({ data }) {
               <Icon name="stops" size={16} /> {n} {n === 1 ? 'stop' : 'stops'}
             </span>
             <span className="fv-stat tabular">
-              <Icon name="pin" size={16} /> {route.distanceKm} km
+              <Icon name="pin" size={16} /> {distanceKm} km
             </span>
             <span className="fv-stat tabular">
-              <Icon name="weight" size={16} /> {route.fuelLitres} L fuel
+              <Icon name="weight" size={16} /> {fuelLitres} L fuel
             </span>
             <span className="fv-stat tabular">
-              <Icon name="truck" size={16} /> {route.trucks} {route.trucks === 1 ? 'truck' : 'trucks'}
+              <Icon name="truck" size={16} /> {trucks} {trucks === 1 ? 'truck' : 'trucks'}
             </span>
           </div>
           <div className="fv-head__actions">
@@ -87,6 +110,6 @@ export default function FleetView({ data }) {
           </motion.div>
         </div>
       </div>
-    </motion.main>
+    </motion.div>
   );
 }

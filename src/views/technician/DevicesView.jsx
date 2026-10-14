@@ -146,9 +146,9 @@ export default function DevicesView({ data }) {
   return (
     <Page label="Devices" wide>
       <PageHead
-        eyebrow={full ? 'IoT technician' : 'Sensor faults'}
+        eyebrow={full ? 'IoT Technician' : 'Sensor faults'}
         title="Devices"
-        sub="Sensor health and maintenance."
+        sub="Check sensor health and report faults for repair."
         actions={full
           ? <Button variant="primary" icon="bin" onClick={() => setModal({ kind: 'register' })} disabled={unregisteredBins.length === 0}>Register device</Button>
           : <Button variant="primary" icon="hazard" onClick={() => setModal({ kind: 'report' })} disabled={bins.length === 0}>Report a fault</Button>}

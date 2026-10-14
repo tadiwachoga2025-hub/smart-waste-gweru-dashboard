@@ -322,7 +322,7 @@ export default function UsersView() {
   return (
     <Page label="Users">
       <PageHead
-        eyebrow="System administrator"
+        eyebrow="System Administrator"
         title="Users"
         sub="Create staff accounts, set roles and switch access on or off."
         actions={<Button variant="primary" icon="plus" onClick={() => setAdding(true)}>Add staff account</Button>}
