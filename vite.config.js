@@ -14,8 +14,8 @@ export default defineConfig({
         name: 'Smart Waste Gweru - AI Logistics Dashboard',
         short_name: 'SmartWaste',
         description: 'AI-powered smart city waste management and fleet routing dashboard for Gweru.',
-        theme_color: '#10b981',
-        background_color: '#f3f4f6',
+        theme_color: '#11100f',
+        background_color: '#11100f',
         display: 'standalone',
         orientation: 'any',
         scope: '/',
@@ -46,7 +46,7 @@ export default defineConfig({
         ],
       },
       workbox: {
-        globPatterns: ['**/*.{js,css,html,svg,png,ico}'],
+        globPatterns: ['**/*.{js,css,html,svg,png,ico,jpg,woff2}'],
         runtimeCaching: [
           {
             // OpenStreetMap map tiles - cache first, maps work offline once viewed
@@ -56,6 +56,21 @@ export default defineConfig({
               cacheName: 'osm-tiles',
               expiration: {
                 maxEntries: 300,
+                maxAgeSeconds: 60 * 60 * 24 * 30, // 30 days
+              },
+              cacheableResponse: {
+                statuses: [0, 200],
+              },
+            },
+          },
+          {
+            // CARTO basemap tiles (light cream map) - cache first, works offline once viewed
+            urlPattern: /^https:\/\/[a-d]\.basemaps\.cartocdn\.com\/.*/i,
+            handler: 'CacheFirst',
+            options: {
+              cacheName: 'carto-tiles',
+              expiration: {
+                maxEntries: 400,
                 maxAgeSeconds: 60 * 60 * 24 * 30, // 30 days
               },
               cacheableResponse: {

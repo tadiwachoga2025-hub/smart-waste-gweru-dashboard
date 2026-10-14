@@ -1,0 +1,357 @@
+/*
+ * Smart Waste design tokens — Transcope dark world.
+ * Brand palette: #D7D1B0 (khaki), #11100F (shell), #201F1E (surface), #FFFFFF.
+ * Every component reads from these; never hard-code a color in a component.
+ */
+:root {
+  /* Brand */
+  --c-khaki: #d7d1b0;
+  --c-khaki-ink: #1b1a17;          /* text on khaki */
+  --c-shell: #11100f;              /* app frame */
+  --c-surface: #1a1918;            /* cards */
+  --c-surface-2: #201f1e;          /* raised: chips, inputs, hover rows */
+  --c-surface-3: #2a2927;          /* pressed / dividers on surface-2 */
+  --c-white: #ffffff;
+
+  /* Text (warm neutrals, all ≥4.5:1 on --c-surface) */
+  --t-primary: #f4f2ec;
+  --t-secondary: #a19d94;
+  --t-tertiary: #8a867d;           /* 4.6:1 on #1a1918 */
+  --t-on-light: #1b1a17;
+  --t-on-light-muted: #6f6b62;
+
+  /* Lines */
+  --line: rgba(244, 242, 236, 0.07);
+  --line-strong: rgba(244, 242, 236, 0.13);
+
+  /* Semantic (bin fill + status) — muted to sit in the khaki world */
+  --s-critical: #e2725b;
+  --s-warning: #e0b660;
+  --s-ok: #9cc58a;
+  --s-info: #c9c3a2;
+
+  /* Gauge gradient (matches reference: rose → sand → green) */
+  --g-gauge: linear-gradient(90deg, #d9837a 0%, #d8b58a 35%, #c9cf8e 65%, #9fcf86 100%);
+
+  /* Map — the basemap is light in both appearances, so anything drawn on
+     it uses these fixed inks rather than theme surfaces. */
+  --map-bg: #efe9d8;
+  --pin: #11100f;
+  --ink-fixed: #11100f;
+  --paper-fixed: #ffffff;
+
+  /* Component surfaces that adapt per appearance */
+  --card-edge: none;                                  /* card outline/shadow */
+  --chip-bg: rgba(60, 58, 55, 0.55);                  /* glass chips over the photo */
+  --media-glow: #2a2927;
+  --media-img-filter: none;
+  --media-img-blend: luminosity;
+  --media-vignette: rgba(0, 0, 0, 0.45);
+  --knob-ring: rgba(255, 255, 255, 0.12);
+  --tip-bg: #ffffff;
+  --tip-ink: #1b1a17;
+  --chart-bar: #ffffff;
+  --chart-line: #d7d1b0;
+  --nav-material: color-mix(in srgb, #11100f 86%, transparent);
+  --focus-ring: var(--c-khaki);
+  --select-ring: var(--c-khaki);
+  --accent-text: var(--c-khaki);
+
+  /* Type */
+  --font: 'Space Grotesk Variable', 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
+  --fs-xs: 0.75rem;     /* 12 */
+  --fs-sm: 0.8125rem;   /* 13 */
+  --fs-md: 0.9375rem;   /* 15 */
+  --fs-lg: 1.0625rem;   /* 17 */
+  --fs-xl: 1.375rem;    /* 22 — card titles */
+  --fs-2xl: 1.625rem;   /* 26 */
+  --fs-display: 3rem;   /* 48 — hero numbers */
+
+  /* Space & shape */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-5: 20px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+  --r-card: 22px;
+  --r-map: 22px;
+  --r-pill: 999px;
+  --r-sm: 10px;
+
+  /* Depth */
+  --shadow-float: 0 8px 24px -8px rgba(0, 0, 0, 0.35), 0 2px 6px -2px rgba(0, 0, 0, 0.25);
+  --shadow-pin: 0 4px 10px -2px rgba(17, 16, 15, 0.45);
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-fast: 160ms;
+  --dur: 220ms;
+
+  /* Layers */
+  --z-map-ui: 500;
+  --z-nav: 1000;
+  --z-overlay: 2000;
+
+  color-scheme: dark;
+}
+
+/* Light appearance — same brand (khaki accent, warm neutrals), inverted
+   luminance. Applied by data-theme="light", set before first paint by the
+   inline script in index.html (system preference unless the user chose). */
+:root[data-theme='light'] {
+  --c-shell: #efede6;
+  --c-surface: #ffffff;
+  --c-surface-2: #f6f4ee;
+  --c-surface-3: #e5e1d4;
+
+  --t-primary: #11100f;
+  --t-secondary: #57534b;
+  --t-tertiary: #6b675e;            /* 5.5:1 on white, 4.9:1 on shell */
+
+  --line: rgba(17, 16, 15, 0.08);
+  --line-strong: rgba(17, 16, 15, 0.14);
+
+  --s-critical: #b4432b;            /* text-safe on white (≥4.5:1) */
+  --s-warning: #8a6110;
+  --s-ok: #3d7533;
+  --s-info: #6f6848;
+
+  --shadow-float: 0 10px 28px -12px rgba(17, 16, 15, 0.22), 0 2px 6px -2px rgba(17, 16, 15, 0.08);
+  --shadow-pin: 0 4px 10px -2px rgba(17, 16, 15, 0.35);
+
+  --card-edge: 0 0 0 1px rgba(17, 16, 15, 0.05), 0 1px 2px rgba(17, 16, 15, 0.04);
+  --chip-bg: rgba(255, 255, 255, 0.72);
+  --media-glow: #ffffff;
+  --media-img-filter: invert(1) contrast(0.82) brightness(1.06);
+  --media-img-blend: multiply;
+  --media-vignette: rgba(239, 237, 230, 0.6);
+  --knob-ring: rgba(17, 16, 15, 0.08);
+  --tip-bg: #11100f;
+  --tip-ink: #ffffff;
+  --chart-bar: #11100f;
+  --chart-line: #8a8259;
+  --nav-material: color-mix(in srgb, #efede6 78%, transparent);
+  --focus-ring: #11100f;
+  --select-ring: #8a8259;
+  --accent-text: #6b6443;
+
+  color-scheme: light;
+}
+
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#root {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+}
+
+html {
+  background: var(--c-shell);
+  -webkit-text-size-adjust: 100%;
+}
+
+html.lenis,
+html.lenis body {
+  height: auto;
+}
+.lenis.lenis-smooth {
+  scroll-behavior: auto !important;
+}
+.lenis.lenis-stopped {
+  overflow: hidden;
+}
+
+body {
+  background: var(--c-shell);
+  color: var(--t-primary);
+  font-family: var(--font);
+  font-size: var(--fs-md);
+  line-height: 1.45;
+  font-feature-settings: 'ss01' 0;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+}
+
+/* Browser surfaces carry the design too */
+::selection {
+  background: var(--c-khaki);
+  color: var(--c-khaki-ink);
+}
+:focus-visible {
+  outline: 2px solid var(--focus-ring);
+  outline-offset: 2px;
+  border-radius: 6px;
+}
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--c-surface-3) transparent;
+}
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--c-surface-3);
+  border-radius: 8px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+button:disabled {
+  cursor: not-allowed;
+}
+input {
+  font: inherit;
+  color: inherit;
+  caret-color: var(--c-khaki-ink);
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
+
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Shared card chrome — every dashboard panel uses .card */
+.card {
+  background: var(--c-surface);
+  box-shadow: var(--card-edge);
+  border-radius: var(--r-card);
+  position: relative;
+  overflow: hidden;
+}
+.card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-6) var(--sp-6) 0;
+}
+.card-title {
+  margin: 0;
+  font-size: var(--fs-xl);
+  font-weight: 500;
+  letter-spacing: -0.01em;
+  line-height: 1.2;
+  color: var(--t-primary);
+}
+.card-expand {
+  display: inline-grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  margin: -4px -6px 0 0;
+  border: 0;
+  border-radius: var(--r-pill);
+  background: transparent;
+  color: var(--t-secondary);
+  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out);
+}
+.card-expand:hover {
+  background: var(--c-surface-2);
+  color: var(--t-primary);
+}
+.card-expand:active {
+  transform: scale(0.94);
+}
+
+/* Demo-data marker: a dashed ring beside a card title means the card is
+   filled from seeded demo data because the live feed lacks that field.
+   The label text stays available to screen readers; the footer legend
+   explains the ring to sighted users. */
+.demo-tag {
+  display: inline-block;
+  flex-shrink: 0;
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1.5px dashed var(--t-tertiary);
+  font-size: 0;
+  line-height: 0;
+  color: transparent;
+  overflow: hidden;
+  vertical-align: middle;
+}
+
+/* Inline text variant for places where a ring would be ambiguous. */
+.demo-label {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 8px;
+  border-radius: var(--r-pill);
+  border: 1px dashed var(--line-strong);
+  color: var(--t-tertiary);
+  font-size: 11px;
+  white-space: nowrap;
+}
+
+/* Fallback cross-fade when the View Transitions API is unavailable:
+   colors ease for one beat while the theme attribute flips. */
+:root.theme-easing,
+:root.theme-easing *,
+:root.theme-easing *::before,
+:root.theme-easing *::after {
+  transition:
+    background-color 280ms var(--ease-out),
+    border-color 280ms var(--ease-out),
+    color 280ms var(--ease-out),
+    fill 280ms var(--ease-out),
+    stroke 280ms var(--ease-out),
+    box-shadow 280ms var(--ease-out) !important;
+}
+::view-transition-old(root),
+::view-transition-new(root) {
+  animation-duration: 320ms;
+  animation-timing-function: cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+/* Accessibility signals (Apple §14) */
+@media (prefers-reduced-transparency: reduce) {
+  :root { --chip-bg: var(--c-surface-2); --nav-material: var(--c-shell); }
+}
+@media (prefers-contrast: more) {
+  :root { --line: var(--line-strong); --card-edge: 0 0 0 1px var(--line-strong); }
+  :root[data-theme='light'] { --t-secondary: #3f3c36; --t-tertiary: #4f4b44; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(root),
+  ::view-transition-new(root) { animation-duration: 120ms; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 1ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 1ms !important;
+  }
+}

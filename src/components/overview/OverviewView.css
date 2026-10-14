@@ -1,0 +1,58 @@
+.overview {
+  display: grid;
+  grid-template-columns: minmax(360px, 0.43fr) 1fr;
+  gap: 14px;
+  align-items: stretch;
+}
+.overview-left,
+.overview-right {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+  min-width: 0;
+}
+.overview-left > *,
+.overview-right > * {
+  min-width: 0;
+}
+.overview-grow {
+  flex: 1 1 auto;
+  display: flex;
+  flex-direction: column;
+}
+.overview-grow > * {
+  flex: 1 1 auto;
+}
+.overview-map {
+  height: clamp(380px, 33vw, 660px);
+  scroll-margin-top: 104px;
+}
+#pickups {
+  scroll-margin-top: 104px;
+}
+/* Desktop: the left column sets the row height; the pickups card fills what
+   remains under the map and scrolls internally (as in the reference). */
+@media (min-width: 1081px) {
+  .overview-right > #pickups {
+    flex: 1 1 0;
+    min-height: 380px;
+    contain: size;
+  }
+  .overview-right > #pickups > .card {
+    height: 100%;
+  }
+}
+
+@media (max-width: 1080px) {
+  .overview {
+    grid-template-columns: 1fr;
+  }
+  .overview-right {
+    order: -1;
+  }
+  .overview-map {
+    height: 62vh;
+    min-height: 360px;
+    max-height: 560px;
+  }
+}
