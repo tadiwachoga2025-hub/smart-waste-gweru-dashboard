@@ -117,6 +117,53 @@ def smtp_config_from_env(env: Mapping[str, str] | None = None) -> SmtpConfig:
     )
 
 
+def smtp_config_from_settings(raw: Any) -> SmtpConfig:
+    """Build an SMTP config from Firebase `settings/smtp` (pure, never raises).
+
+    Mirrors :func:`smtp_config_from_env` so the engine can prefer dashboard
+    settings over `.env`. Completeness is decided by the caller via
+    ``configured`` (user + password present); this helper never logs secrets.
+    """
+    data = raw if isinstance(raw, Mapping) else {}
+
+    def _text(key: str) -> str:
+        value = data.get(key)
+        return value.strip() if isinstance(value, str) else ""
+
+    host = _text("host") or "smtp.gmail.com"
+    user = _text("user")
+    password = data.get("password")
+    password = password if isinstance(password, str) else ""
+    sender = _text("sender") or user
+
+    port_raw = data.get("port")
+    try:
+        if port_raw is None or (isinstance(port_raw, str) and port_raw.strip() == ""):
+            port = 587
+        elif isinstance(port_raw, bool):
+            raise ValueError("boolean port")
+        elif isinstance(port_raw, str):
+            port = int(port_raw.strip())
+        else:
+            port = int(port_raw)  # type: ignore[arg-type]
+    except (ValueError, TypeError):
+        log.warning("SMTP port from settings is not a number; using 587.")
+        port = 587
+
+    security = _text("security").lower() or "starttls"
+    if security not in ("starttls", "ssl", "none"):
+        log.warning("SMTP security from settings must be starttls, ssl or none; using starttls.")
+        security = "starttls"
+    return SmtpConfig(
+        host=host,
+        port=port,
+        user=user,
+        password=password,
+        sender=sender,
+        security=security,
+    )
+
+
 # --------------------------------------------------------------------------
 # Settings
 # --------------------------------------------------------------------------

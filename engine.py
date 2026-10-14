@@ -226,13 +226,96 @@ def optimize_route(critical_bins):
     # Return the ordered list of bin IDs based on the optimized route
     return [critical_bins[i]['id'] for i in tsp_path]
 
+def effective_smtp_config(smtp_settings_raw=None, env=None):
+    """Precedence: Firebase `settings/smtp` wins when complete, else `.env`.
+
+    "Complete" means user + password are both present (``configured``).
+    Never logs the password: only the scrubbed repr (``***``) ever leaves
+    here, via :func:`notifier._scrub` discipline in the send path.
+    """
+    try:
+        from_settings = notifier.smtp_config_from_settings(smtp_settings_raw)
+        if from_settings.configured:
+            return from_settings
+    except Exception as exc:  # noqa: BLE001 - malformed settings fall back to .env
+        log.warning("Could not parse settings/smtp, falling back to .env: %s",
+                    type(exc).__name__)
+    return notifier.smtp_config_from_env(env)
+
+
+def current_effective_smtp_config():
+    """Read `settings/smtp` from Firebase and resolve the effective config."""
+    try:
+        raw = db.reference('settings/smtp').get()
+    except Exception as exc:  # noqa: BLE001 - a read failure falls back to .env
+        log.warning("Could not read settings/smtp: %s", type(exc).__name__)
+        raw = None
+    return effective_smtp_config(raw)
+
+
+def handle_smtp_test_queue(dry_run=False):
+    """Handle one pending `settings/smtpTest` request, if any. Never raises.
+
+    The dashboard writes ``status: 'pending'``; the engine sends a test email
+    via :func:`notifier.send_test_email` to the current normalized recipients,
+    pushes the resulting entry to ``alertLog`` (type ``'test'``), and acks the
+    node to ``sent``/``failed`` with ``handledAt`` + ``result`` (<=500 chars,
+    scrubbed so the officer-readable node never carries the password).
+    Only runs as part of a cycle; failures never break the cycle.
+    """
+    try:
+        test_node = db.reference('settings/smtpTest').get() or {}
+    except Exception as exc:  # noqa: BLE001
+        log.warning("Could not read settings/smtpTest: %s", type(exc).__name__)
+        return
+    if not isinstance(test_node, dict) or test_node.get('status') != 'pending':
+        return
+    try:
+        try:
+            alert_settings = notifier.normalize_settings(
+                db.reference('settings/alerts').get())
+        except Exception:  # noqa: BLE001
+            alert_settings = notifier.normalize_settings(None)
+        recipients = alert_settings['recipients']
+        config = current_effective_smtp_config()
+        if dry_run:
+            print(f"[dry-run] Would send queued test email to "
+                  f"{', '.join(recipients) or '(no recipients)'}")
+            return
+        entry = notifier.send_test_email(recipients, config)
+        if entry is None:
+            return
+        try:
+            db.reference('alertLog').push(entry)
+        except Exception as exc:  # noqa: BLE001
+            log.warning("alertLog write for test email failed: %s", type(exc).__name__)
+        status = 'sent' if entry.get('status') == 'sent' else 'failed'
+        if status == 'sent':
+            result = f"Test email sent to {len(recipients)} recipient(s)."
+        else:
+            result = str(entry.get('error') or entry.get('status') or 'failed')
+        # Scrub + cap: smtpTest is officer-readable, so the password must
+        # never appear here even if an SMTP library echoes credentials.
+        result = notifier._scrub(result, config)[:500]
+        try:
+            db.reference('settings/smtpTest').update({
+                'status': status,
+                'handledAt': _utc_ms(),
+                'result': result,
+            })
+        except Exception as exc:  # noqa: BLE001
+            log.warning("Could not ack settings/smtpTest: %s", type(exc).__name__)
+        log.info("Queued test email %s.", status)
+    except Exception as exc:  # noqa: BLE001 - the queue never breaks the cycle
+        log.warning("Test-email queue handling failed: %s", type(exc).__name__)
+
 def send_bin_alerts(bins_data, resources, dry_run=False):
     """Email the operators about newly-full bins and persist alert state/log."""
     outcome = notifier.process_alerts(
         bins_data,
         db.reference('alertState').get() or {},
         db.reference('settings/alerts').get(),
-        notifier.smtp_config_from_env(),
+        current_effective_smtp_config(),
         resources=resources,
         dashboard_url=os.environ.get('DASHBOARD_URL', ''),
         dry_run=dry_run,
@@ -247,7 +330,7 @@ def send_bin_alerts(bins_data, resources, dry_run=False):
 def run_test_email(dry_run=False):
     """Send a labelled test message to the configured recipients, then log it."""
     settings = notifier.normalize_settings(db.reference('settings/alerts').get())
-    entry = notifier.send_test_email(settings['recipients'], notifier.smtp_config_from_env(),
+    entry = notifier.send_test_email(settings['recipients'], current_effective_smtp_config(),
                                      dry_run=dry_run)
     if entry is None:
         return
@@ -405,6 +488,13 @@ def run_logistics_engine(dry_run=False):
     except Exception as exc:
         alert_status = f"failed: {type(exc).__name__}"
         log.error("Alert step failed: %s: %s", type(exc).__name__, exc)
+
+    # 5. Queued test email from the dashboard (settings/smtpTest == pending).
+    #    Handled every cycle and only here; never breaks the run.
+    try:
+        handle_smtp_test_queue(dry_run)
+    except Exception as exc:  # noqa: BLE001 - belt and braces; handler already swallows
+        log.warning("Test-email queue step failed: %s", type(exc).__name__)
 
     duration_s = round(time.time() - cycle_started, 2)
     cycle_metrics = {
