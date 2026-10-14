@@ -107,12 +107,12 @@ export default function RouteMap({ truck, coords, suggestion, showSuggestion, on
       >
         <TileLayer url={TILES.url} attribution={TILES.attribution} subdomains={TILES.subdomains} maxZoom={19} />
         {rest.length > 1 ? (
-          <Polyline positions={rest} pathOptions={{ color: '#11100f', weight: 3, dashArray: '2 8', lineCap: 'round', opacity: 0.55 }} />
+          <Polyline positions={rest} interactive={false} pathOptions={{ color: '#11100f', weight: 3, dashArray: '2 8', lineCap: 'round', opacity: 0.55 }} />
         ) : null}
         {done.length > 1 ? (
           <>
-            <Polyline positions={done} pathOptions={{ color: '#d7d1b0', weight: 9, opacity: 0.9, lineCap: 'round' }} />
-            <Polyline positions={done} pathOptions={{ color: '#11100f', weight: 4, lineCap: 'round' }} />
+            <Polyline positions={done} interactive={false} pathOptions={{ color: '#d7d1b0', weight: 9, opacity: 0.9, lineCap: 'round' }} />
+            <Polyline positions={done} interactive={false} pathOptions={{ color: '#11100f', weight: 4, lineCap: 'round' }} />
           </>
         ) : null}
         <Marker position={dest} icon={pinIcon} keyboard={false} />

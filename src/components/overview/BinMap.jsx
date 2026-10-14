@@ -8,6 +8,9 @@ import './map-table.css';
 
 const CENTER = [-19.512, 29.838];
 
+const ROUTE_CASING = { color: '#d7d1b0', weight: 7 };
+const ROUTE_LINE = { color: '#11100f', weight: 3 };
+
 const SORTS = [
   { key: 'critical', label: 'Critical (≥90%)', test: (b) => b.fillLevel >= 90 },
   { key: 'due', label: 'Due soon (75–89%)', test: (b) => b.fillLevel >= 75 && b.fillLevel < 90 },
@@ -165,8 +168,10 @@ export default function BinMap({ bins, route, selectedId, onSelect, searchInputR
           <ClearOnBackground onSelect={onSelect} />
           {routeCoords.length > 1 && (
             <>
-              <Polyline positions={routeCoords} pathOptions={{ className: 'bm-route-casing', weight: 7, interactive: false }} />
-              <Polyline positions={routeCoords} pathOptions={{ className: 'bm-route', weight: 3, interactive: false }} />
+              {/* className/interactive are creation-time Leaflet options: pass them as
+                  props, because react-leaflet applies pathOptions via setStyle(). */}
+              <Polyline positions={routeCoords} className="bm-route-casing" interactive={false} pathOptions={ROUTE_CASING} />
+              <Polyline positions={routeCoords} className="bm-route" interactive={false} pathOptions={ROUTE_LINE} />
               <Marker position={routeCoords[0]} icon={depotIcon} keyboard={false} interactive={false} />
             </>
           )}
