@@ -1,0 +1,88 @@
+/*
+ * Officer surfaces. Only what the shared kit (ui.css) does not already cover.
+ * Everything reads from tokens.css; classes are prefixed `off-`.
+ */
+
+/* Filter bar: the kit's segmented buttons are 38px, raise them to a 44px target here */
+.off-filter { display: flex; max-width: 100%; }
+.off-filter .ui-seg { max-width: 100%; border-radius: var(--r-card); }
+.off-filter .ui-seg__btn { min-height: 44px; }
+
+/* Queue: one flat row per complaint inside a single panel */
+.off-queue { margin: 0; padding: 0; list-style: none; }
+.off-row {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr) auto;
+  align-items: start;
+  gap: var(--sp-4);
+  padding: var(--sp-4) var(--sp-6);
+  border-bottom: 1px solid var(--line);
+}
+.off-row:last-child { border-bottom: 0; }
+.off-row--nophoto { grid-template-columns: minmax(0, 1fr) auto; }
+
+.off-main { display: flex; flex-direction: column; gap: var(--sp-1); min-width: 0; }
+.off-head { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); }
+.off-type { color: var(--t-primary); font-size: var(--fs-md); font-weight: 500; }
+.off-meta { margin: 0; color: var(--t-tertiary); font-size: var(--fs-xs); overflow-wrap: anywhere; }
+.off-where {
+  display: flex; flex-wrap: wrap; align-items: center;
+  gap: 0 var(--sp-3);
+  color: var(--t-secondary); font-size: var(--fs-sm);
+}
+.off-where > span { overflow-wrap: anywhere; }
+.off-link {
+  display: inline-flex; align-items: center; gap: var(--sp-1);
+  min-height: 44px;
+  color: var(--accent-text); font-size: var(--fs-sm); font-weight: 500;
+  text-decoration: underline; text-underline-offset: 3px;
+}
+.off-link:hover { color: var(--t-primary); }
+.off-note {
+  margin: 0;
+  color: var(--t-primary); font-size: var(--fs-md); line-height: 1.45;
+  white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.off-reply {
+  margin: var(--sp-2) 0 0;
+  padding-left: var(--sp-3);
+  border-left: 2px solid var(--line-strong);
+  color: var(--t-secondary); font-size: var(--fs-sm);
+  white-space: pre-wrap; overflow-wrap: anywhere;
+}
+.off-reply strong { display: block; color: var(--t-tertiary); font-size: var(--fs-xs); font-weight: 500; }
+
+.off-thumb {
+  display: block; flex: none;
+  width: 72px; height: 72px; padding: 0;
+  border: 1px solid var(--line-strong); border-radius: var(--r-sm);
+  background: var(--c-surface-2);
+  overflow: hidden;
+  transition: transform 100ms ease-out;
+}
+.off-thumb:active { transform: scale(0.97); }
+.off-thumb img { display: block; width: 100%; height: 100%; object-fit: cover; }
+
+.off-actions { display: flex; flex-direction: column; align-items: stretch; gap: var(--sp-2); min-width: 168px; }
+.off-final { margin: 0; color: var(--t-tertiary); font-size: var(--fs-xs); text-align: right; }
+
+.off-photo { display: block; max-width: 100%; max-height: 68vh; margin: 0 auto; border-radius: var(--r-sm); object-fit: contain; }
+
+/* Decision dialog */
+.off-quote {
+  margin: 0 0 var(--sp-4);
+  padding-left: var(--sp-3);
+  border-left: 2px solid var(--line-strong);
+  color: var(--t-secondary); font-size: var(--fs-sm);
+  white-space: pre-wrap; overflow-wrap: anywhere;
+  display: -webkit-box; -webkit-line-clamp: 4; line-clamp: 4; -webkit-box-orient: vertical; overflow: hidden;
+}
+.off-lead { margin: 0; color: var(--t-secondary); font-size: var(--fs-sm); }
+
+@media (max-width: 680px) {
+  .off-row,
+  .off-row--nophoto { grid-template-columns: minmax(0, 1fr); padding: var(--sp-4); gap: var(--sp-3); }
+  .off-actions { flex-direction: row; flex-wrap: wrap; min-width: 0; }
+  .off-actions > .ui-btn { flex: 1 1 auto; }
+  .off-final { text-align: left; }
+}

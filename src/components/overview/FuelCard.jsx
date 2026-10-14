@@ -56,7 +56,7 @@ export default function FuelCard({ route }) {
       </div>
 
       <div className="fu-chart-wrap">
-        <p className="fu-sr">{summary}</p>
+        <p className="sr-only">{summary}</p>
         {count ? (
           <>
             <div className="fu-strip" aria-hidden="true">

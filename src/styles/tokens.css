@@ -46,6 +46,10 @@
      it uses these fixed inks rather than theme surfaces. */
   --map-bg: #eef3e2;
   --map-tile-filter: sepia(0.2) hue-rotate(28deg) saturate(1.08) contrast(1.04) brightness(0.99);
+  /* Bin fill bands drawn on the (always light) map: fixed, text-safe inks */
+  --band-normal: #224f10;
+  --band-high: #8a6110;
+  --band-critical: #b4432b;
   --pin: #0d0d0d;
   --ink-fixed: #0d0d0d;
   --paper-fixed: #ffffff;
@@ -124,8 +128,8 @@
   --line: rgba(34, 79, 16, 0.1);
   --line-strong: rgba(34, 79, 16, 0.18);
 
-  --s-critical: #b4432b;            /* text-safe on light (≥4.5:1) */
-  --s-warning: #8a6110;
+  --s-critical: #9f3a22;            /* text-safe on light, incl. 16% tinted pills (≥4.5:1) */
+  --s-warning: #744f08;
   --s-ok: #224f10;
   --s-info: #3c5a2c;
 

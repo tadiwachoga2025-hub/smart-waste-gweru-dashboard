@@ -1,0 +1,56 @@
+/*
+ * Driver surface. Phone-in-a-truck-cab first: 52px primary targets, large
+ * type, strong contrast. Built only from tokens.css; classes prefixed drv-.
+ */
+.drv { gap: var(--sp-4); }
+
+.drv-hero__top { display: flex; flex-wrap: wrap; align-items: center; gap: var(--sp-2) var(--sp-3); }
+.drv-hero__meta { display: flex; align-items: center; gap: var(--sp-2); margin: var(--sp-2) 0 0; color: var(--t-secondary); font-size: var(--fs-lg); }
+.drv-progress { margin-top: var(--sp-4); display: grid; gap: var(--sp-2); }
+.drv-progress__text { margin: 0; font-size: var(--fs-2xl); font-weight: 500; letter-spacing: -0.01em; font-variant-numeric: tabular-nums; }
+.drv-progress .ui-fillbar { height: 12px; }
+.drv-progress .ui-fillbar > i { transform-origin: left center; transition: transform var(--dur) var(--ease-out); } /* scaleX, not width: compositor-only */
+
+/* Stops checklist */
+.drv-stop { align-items: stretch; flex-direction: column; gap: var(--sp-3); padding: var(--sp-4); border-left: 4px solid transparent; }
+.drv-stop.is-next { border-left-color: var(--c-accent); background: var(--c-surface-2); }
+.drv-stop.is-done .drv-stop__loc { color: var(--t-secondary); text-decoration: line-through; text-decoration-thickness: 1px; }
+.drv-stop__head { display: flex; align-items: flex-start; gap: var(--sp-3); }
+.drv-stop__num {
+  flex: none; display: grid; place-items: center; width: 40px; height: 40px;
+  border-radius: 50%; background: var(--c-surface-3); color: var(--t-primary);
+  font-size: var(--fs-lg); font-weight: 600; font-variant-numeric: tabular-nums;
+}
+.is-next .drv-stop__num { background: var(--c-accent); color: var(--c-accent-ink); }
+.is-done .drv-stop__num { background: var(--c-surface-2); color: var(--accent-text); }
+.drv-stop__body { flex: 1; min-width: 0; display: grid; gap: var(--sp-1); }
+.drv-stop__loc { margin: 0; font-size: var(--fs-xl); font-weight: 500; line-height: 1.2; overflow-wrap: anywhere; }
+.drv-stop__pred { margin: 0; color: var(--t-secondary); font-size: var(--fs-md); }
+.drv-stop__fill { display: flex; align-items: center; gap: var(--sp-3); margin-top: var(--sp-1); }
+.drv-stop__fill .ui-fillbar { flex: 1; height: 10px; }
+.drv-stop__pct { min-width: 4ch; text-align: right; font-size: var(--fs-lg); font-weight: 600; font-variant-numeric: tabular-nums; }
+.drv-stop__actions { display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-2); }
+@media (min-width: 681px) { .drv-stop__actions { grid-template-columns: 180px minmax(0, 1fr); } }
+
+/* Big touch targets */
+.drv-big { min-height: 52px; font-size: var(--fs-lg); padding: 0 var(--sp-5); }
+.drv-toggle[aria-pressed='true'] { background: var(--c-surface-3); border-color: var(--c-accent); color: var(--accent-text); }
+
+/* Sticky action bar: thumb zone on phones */
+.drv-bar {
+  position: sticky; bottom: 0; z-index: var(--z-map-ui);
+  display: grid; grid-template-columns: minmax(0, 1fr); gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-4) calc(var(--sp-3) + env(safe-area-inset-bottom));
+  border: 1px solid var(--line-strong); border-radius: var(--r-card);
+  background: var(--c-surface); box-shadow: var(--shadow-float);
+}
+.drv-bar--two { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+@media (max-width: 680px) { .drv-bar { border-radius: var(--r-card) var(--r-card) 0 0; } }
+@media (min-width: 681px) { .drv-bar { max-width: 560px; margin-left: auto; width: 100%; } }
+
+/* Secondary lists */
+.drv-sub { margin: 0; color: var(--t-secondary); font-size: var(--fs-sm); }
+.drv-row-title { margin: 0; font-size: var(--fs-lg); font-weight: 500; overflow-wrap: anywhere; }
+.drv-issue-note { margin: var(--sp-1) 0 0; font-size: var(--fs-md); overflow-wrap: anywhere; }
+
+.drv-modal-actions { display: grid; gap: var(--sp-2); margin-top: var(--sp-2); }

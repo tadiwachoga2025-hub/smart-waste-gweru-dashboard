@@ -1,7 +1,8 @@
 import { initializeApp } from "firebase/app";
 import { getDatabase } from "firebase/database";
+import { getAuth } from "firebase/auth";
 
-const firebaseConfig = {
+export const firebaseConfig = {
   apiKey: "AIzaSyBENPTSzwfRKhowI0KuTiTburcnUvfVUe4",
   authDomain: "smart-waste-gweru.firebaseapp.com",
   databaseURL: "https://smart-waste-gweru-default-rtdb.firebaseio.com",
@@ -13,3 +14,4 @@ const firebaseConfig = {
 
 const app = initializeApp(firebaseConfig);
 export const db = getDatabase(app);
+export const auth = getAuth(app);
