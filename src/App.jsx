@@ -19,6 +19,7 @@ import './App.css';
 const FleetView = lazy(() => import('./components/fleet/FleetView.jsx'));
 const UsersView = lazy(() => import('./views/admin/UsersView.jsx'));
 const AccessLogView = lazy(() => import('./views/admin/AccessLogView.jsx'));
+const AlertsView = lazy(() => import('./views/admin/AlertsView.jsx'));
 const DispatchView = lazy(() => import('./views/officer/DispatchView.jsx'));
 const ComplaintsView = lazy(() => import('./views/officer/ComplaintsView.jsx'));
 const DriverView = lazy(() => import('./views/driver/DriverView.jsx'));
@@ -30,6 +31,7 @@ const SCREENS = {
   route: FleetView,
   users: UsersView,
   audit: AccessLogView,
+  alerts: AlertsView,
   dispatch: DispatchView,
   complaints: ComplaintsView,
   jobs: DriverView,

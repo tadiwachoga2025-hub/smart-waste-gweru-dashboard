@@ -6,12 +6,19 @@ import numpy as np
 import networkx as nx
 from scipy.spatial import distance_matrix
 import math
+import argparse
+import logging
+import os
+import time
 
-# 1. Initialize Firebase Connection
-cred = credentials.Certificate("smart-waste-gweru-firebase-adminsdk-fbsvc-7281635fb4.json")
-firebase_admin.initialize_app(cred, {
-    'databaseURL': 'https://smart-waste-gweru-default-rtdb.firebaseio.com/'
-})
+import notifier
+
+# 1. Initialize Firebase Connection (done in main so `--help` needs no credentials)
+def init_firebase():
+    cred = credentials.Certificate("smart-waste-gweru-firebase-adminsdk-fbsvc-7281635fb4.json")
+    firebase_admin.initialize_app(cred, {
+        'databaseURL': 'https://smart-waste-gweru-default-rtdb.firebaseio.com/'
+    })
 
 def train_forecasting_model():
     """Trains an XGBoost model to predict hours until full based on historical fill rates."""
@@ -44,7 +51,35 @@ def optimize_route(critical_bins):
     # Return the ordered list of bin IDs based on the optimized route
     return [critical_bins[i]['id'] for i in tsp_path]
 
-def run_logistics_engine():
+def send_bin_alerts(bins_data, resources, dry_run=False):
+    """Email the operators about newly-full bins and persist alert state/log."""
+    outcome = notifier.process_alerts(
+        bins_data,
+        db.reference('alertState').get() or {},
+        db.reference('settings/alerts').get(),
+        notifier.smtp_config_from_env(),
+        resources=resources,
+        dashboard_url=os.environ.get('DASHBOARD_URL', ''),
+        dry_run=dry_run,
+    )
+    if dry_run:
+        return
+    for bin_id, state in outcome.state_updates.items():
+        db.reference('alertState').child(bin_id).update(state)
+    if outcome.log_entry:
+        db.reference('alertLog').push(outcome.log_entry)
+
+def run_test_email(dry_run=False):
+    """Send a labelled test message to the configured recipients, then log it."""
+    settings = notifier.normalize_settings(db.reference('settings/alerts').get())
+    entry = notifier.send_test_email(settings['recipients'], notifier.smtp_config_from_env(),
+                                     dry_run=dry_run)
+    if entry is None:
+        return
+    print(f"Test email {entry['status']}" + (f": {entry['error']}" if entry.get('error') else "."))
+    db.reference('alertLog').push(entry)
+
+def run_logistics_engine(dry_run=False):
     print("Fetching live sensor data from Firebase...")
     bins_ref = db.reference('bins')
     bins_data = bins_ref.get()
@@ -69,6 +104,7 @@ def run_logistics_engine():
         hours_until_full = float(model.predict(X_pred)[0])
         
         predicted_status = "Critical Now" if current_fill >= 90 else f"Full in {max(1, int(hours_until_full))} hours"
+        b_data['prediction'] = predicted_status  # used by the alert email
         
         # Update specific bin with its prediction
         bins_ref.child(bin_id).update({'prediction': predicted_status})
@@ -118,5 +154,49 @@ def run_logistics_engine():
     db.reference('logistics').set(logistics_payload)
     print("✓ Predictive analytics and routing complete. Dashboard updated.")
 
+    # 4. Notify: email operators about newly-full bins (never breaks the run)
+    try:
+        send_bin_alerts(bins_data, logistics_payload['resources'], dry_run)
+    except Exception as exc:
+        print(f"Alert step failed: {type(exc).__name__}: {exc}")
+
+def watch_seconds(value):
+    seconds = int(value)
+    if seconds < 30:
+        raise argparse.ArgumentTypeError("--watch must be at least 30 seconds")
+    return seconds
+
+def main():
+    parser = argparse.ArgumentParser(description="Smart Waste logistics engine with email alerts.")
+    parser.add_argument('--dry-run', action='store_true',
+                        help="do everything except send email or write alert state; print what would be sent")
+    parser.add_argument('--test-email', action='store_true',
+                        help="send a test email to the configured recipients, then exit")
+    parser.add_argument('--watch', type=watch_seconds, metavar='SECONDS',
+                        help="rerun the engine every SECONDS (minimum 30)")
+    args = parser.parse_args()
+
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(message)s")
+    notifier.load_env_file(os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env'))
+    init_firebase()
+
+    if args.test_email:
+        run_test_email(args.dry_run)
+        return
+    if not args.watch:
+        run_logistics_engine(args.dry_run)
+        return
+
+    print(f"Watching: running every {args.watch}s. Press Ctrl-C to stop.")
+    try:
+        while True:
+            try:
+                run_logistics_engine(args.dry_run)
+            except Exception as exc:
+                print(f"Engine cycle failed: {type(exc).__name__}: {exc}")
+            time.sleep(args.watch)
+    except KeyboardInterrupt:
+        print("\nStopped.")
+
 if __name__ == "__main__":
-    run_logistics_engine()
+    main()

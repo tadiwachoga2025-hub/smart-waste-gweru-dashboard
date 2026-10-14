@@ -184,6 +184,32 @@ const rules = {
       },
     },
 
+    // Alert preferences (who gets the bin-full email, thresholds). The engine
+    // reads these with the Admin SDK; only administrators change them.
+    settings: {
+      alerts: {
+        '.read': or(admin, officer),
+        '.write': admin,
+        enabled: { '.validate': 'newData.isBoolean()' },
+        recipients: {
+          '.validate': 'newData.hasChildren() && newData.val().length <= 10',
+          $i: { '.validate': `newData.isString() && newData.val().length <= 254 && newData.val().matches(/^[^@\\s]+@[^@\\s]+\\.[^@\\s]+$/)` },
+        },
+        criticalAt: { '.validate': 'newData.isNumber() && newData.val() >= 50 && newData.val() <= 100' },
+        rearmBelow: { '.validate': 'newData.isNumber() && newData.val() >= 0 && newData.val() <= 99' },
+        minIntervalMinutes: { '.validate': 'newData.isNumber() && newData.val() >= 5 && newData.val() <= 1440' },
+        updatedAt: { '.validate': 'newData.isNumber()' },
+      },
+    },
+
+    // Email-alert history, written by engine.py (Admin SDK). Staff can read it;
+    // no client can write or edit it. /alertState is engine-only: no rule, so
+    // it is denied to every client.
+    alertLog: {
+      '.read': or(admin, officer),
+      '.indexOn': ['at'],
+    },
+
     // Append-only access log. Anyone signed in may add their own entries;
     // nobody can edit or delete; only administrators can read.
     audit: {

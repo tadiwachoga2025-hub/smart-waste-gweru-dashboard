@@ -16,6 +16,7 @@ dist-ssr
 *-firebase-adminsdk-*.json
 .env
 .env.*
+!.env.example
 .DS_Store
 
 # Python engine
