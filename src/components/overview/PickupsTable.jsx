@@ -7,17 +7,17 @@ import './map-table.css';
 const FILTERS = [
   { key: 'all', label: 'All' },
   { key: 'critical', label: 'Critical' },
-  { key: 'scheduled', label: 'Scheduled' },
-  { key: 'assigned', label: 'Assigned' },
-  { key: 'collected', label: 'Collected' },
+  { key: 'route', label: 'On route' },
+  { key: 'due', label: 'Due soon' },
+  { key: 'normal', label: 'Normal' },
 ];
 
 const EMPTY = {
-  all: 'No pickups to show yet.',
-  critical: 'No bins are waiting on a truck right now.',
-  scheduled: 'Nothing is scheduled beyond the current route.',
-  assigned: 'No trucks are on a route at the moment.',
-  collected: 'No bins have been collected yet today.',
+  all: 'No bins in the database yet. Readings appear here as soon as a sensor reports.',
+  critical: 'No bins are critical right now.',
+  route: 'No bins are on the active route.',
+  due: 'No bins are due soon.',
+  normal: 'No bins are in the normal range.',
 };
 
 // Phones show the first rows; the rest sit behind "Show all".
@@ -31,51 +31,68 @@ function goToMap() {
   else document.getElementById('map')?.scrollIntoView({ behavior: 'smooth' });
 }
 
-function Timeline() {
-  return (
-    <span className="pt-timeline" aria-hidden="true">
-      <i className="pt-tl-ring" />
-      <i className="pt-tl-line" />
-      <i className="pt-tl-dot" />
-    </span>
-  );
+const fillSpring = { type: 'spring', bounce: 0, duration: 0.9 };
+
+// "Full in 19 hours" -> 19, "Critical Now" -> 0, anything else sorts last.
+function hoursUntilFull(prediction) {
+  const text = String(prediction ?? '');
+  if (/critical now/i.test(text)) return 0;
+  const m = text.match(/(\d+(?:\.\d+)?)/);
+  return m ? Number(m[1]) : Infinity;
 }
 
-export default function PickupsTable({ pickups, selectedId, onSelect }) {
+const NEXT_SORT = { none: 'high', high: 'low', low: 'none' };
+
+export default function PickupsTable({ bins, selectedId, onSelect }) {
   const [filter, setFilter] = useState('all');
-  const [etaSort, setEtaSort] = useState('none');
-  const [liveOnly, setLiveOnly] = useState(false);
+  const [fillSort, setFillSort] = useState('none');
+  const [soonSort, setSoonSort] = useState(false);
   const [expanded, setExpanded] = useState(false);
   const rootRef = useRef(null);
 
   const rows = useMemo(() => {
-    let list = pickups.filter((p) => (filter === 'all' ? true : p.status === filter));
-    if (liveOnly) list = list.filter((p) => p.source === 'live');
-    if (etaSort !== 'none') {
-      const dir = etaSort === 'asc' ? 1 : -1;
-      list = [...list].sort((a, b) => (a.eta - b.eta) * dir);
+    let list = bins.filter((b) => (filter === 'all' ? true : b.status === filter));
+    if (soonSort) {
+      list = [...list].sort((a, b) => hoursUntilFull(a.prediction) - hoursUntilFull(b.prediction));
+    } else if (fillSort !== 'none') {
+      const dir = fillSort === 'high' ? -1 : 1;
+      list = [...list].sort((a, b) => (a.fillLevel - b.fillLevel) * dir);
     }
     return list;
-  }, [pickups, filter, liveOnly, etaSort]);
+  }, [bins, filter, fillSort, soonSort]);
 
-  useScrollReveal(rootRef, 'tr[data-reveal]', [filter, liveOnly]);
+  const critical = useMemo(() => bins.filter((b) => b.fillLevel >= 90).length, [bins]);
 
-  const cycleEta = () => setEtaSort((s) => (s === 'none' ? 'asc' : s === 'asc' ? 'desc' : 'none'));
-  const etaLabel =
-    etaSort === 'none' ? 'Sort by ETA' : etaSort === 'asc' ? 'Sorted by ETA, soonest first' : 'Sorted by ETA, latest first';
+  useScrollReveal(rootRef, 'tr[data-reveal]', [filter]);
+
+  const fillLabel =
+    fillSort === 'none' ? 'Sort by fill level' : fillSort === 'high' ? 'Sorted by fill level, highest first' : 'Sorted by fill level, lowest first';
+  const soonLabel = soonSort ? 'Sorted by soonest predicted full' : 'Sort by soonest predicted full';
+
+  const cycleFill = () => {
+    setFillSort((s) => NEXT_SORT[s]);
+    setSoonSort(false);
+  };
+  const toggleSoon = () => {
+    setSoonSort((v) => !v);
+    setFillSort('none');
+  };
 
   const activate = (p) => {
-    onSelect(p.binId);
+    onSelect(p.id);
     goToMap();
   };
 
   return (
     <div className={`card pt${expanded ? '' : ' is-collapsed'}`} ref={rootRef}>
       <div className="pt-head">
-        <h2 className="card-title">Pickups</h2>
+        <div className="pt-title">
+          <h2 className="card-title">Live Bin Monitor</h2>
+          <span className="pt-chip">Targeting <span className="tabular">{critical}</span> critical {critical === 1 ? 'bin' : 'bins'}</span>
+        </div>
         <div className="pt-tools">
           <LayoutGroup id="pt-filter">
-            <div className="pt-track" role="group" aria-label="Filter pickups by status">
+            <div className="pt-track" role="group" aria-label="Filter bins by status">
               {FILTERS.map((f) => {
                 const on = filter === f.key;
                 return (
@@ -93,18 +110,11 @@ export default function PickupsTable({ pickups, selectedId, onSelect }) {
               })}
             </div>
           </LayoutGroup>
-          <button type="button" className="pt-icon" aria-pressed={etaSort !== 'none'} aria-label={etaLabel} title={etaLabel} onClick={cycleEta}>
-            <Icon name="calendar" size={20} />
-          </button>
-          <button
-            type="button"
-            className="pt-icon"
-            aria-pressed={liveOnly}
-            aria-label="Live sensors only"
-            title="Live sensors only"
-            onClick={() => setLiveOnly((v) => !v)}
-          >
+          <button type="button" className="pt-icon" aria-pressed={fillSort !== 'none'} aria-label={fillLabel} title={fillLabel} onClick={cycleFill}>
             <Icon name="filter" size={20} />
+          </button>
+          <button type="button" className="pt-icon" aria-pressed={soonSort} aria-label={soonLabel} title={soonLabel} onClick={toggleSoon}>
+            <Icon name="calendar" size={20} />
           </button>
         </div>
       </div>
@@ -112,20 +122,18 @@ export default function PickupsTable({ pickups, selectedId, onSelect }) {
       <div className="pt-scroll" data-lenis-prevent>
       <table className="pt-table">
         <colgroup>
-          <col style={{ width: '20%' }} />
           <col style={{ width: '17%' }} />
-          <col style={{ width: '26%' }} />
-          <col style={{ width: '10%' }} />
-          <col style={{ width: '13%' }} />
-          <col style={{ width: '14%' }} />
+          <col style={{ width: '24%' }} />
+          <col style={{ width: '25%' }} />
+          <col style={{ width: '19%' }} />
+          <col style={{ width: '15%' }} />
         </colgroup>
         <thead>
           <tr>
-            <th scope="col">Pickup ID</th>
-            <th scope="col">Bin</th>
-            <th scope="col">Route</th>
-            <th scope="col">Est. load</th>
-            <th scope="col">ETA</th>
+            <th scope="col">Bin ID</th>
+            <th scope="col">Location</th>
+            <th scope="col">Fill level</th>
+            <th scope="col">AI prediction</th>
             <th scope="col" className="pt-right">Status</th>
           </tr>
         </thead>
@@ -139,9 +147,9 @@ export default function PickupsTable({ pickups, selectedId, onSelect }) {
                 exit={{ opacity: 0 }}
                 transition={rowSpring}
                 tabIndex={0}
-                className={`pt-row${p.binId === selectedId ? ' is-selected' : ''}`}
-                aria-label={`${p.code}, ${p.location}, ${p.statusLabel}`}
-                aria-selected={p.binId === selectedId}
+                className={`pt-row${p.id === selectedId ? ' is-selected' : ''}`}
+                aria-label={`${p.code}, ${p.location}, ${Math.round(p.fillLevel)}% full, ${p.statusLabel}`}
+                aria-selected={p.id === selectedId}
                 onClick={() => activate(p)}
                 onKeyDown={(e) => {
                   if (e.key === 'Enter' || e.key === ' ') {
@@ -152,24 +160,28 @@ export default function PickupsTable({ pickups, selectedId, onSelect }) {
               >
                 <td className="pt-c-id">
                   <span className="pt-id">
-                    <Icon name={p.vehicle} size={34} strokeWidth={1.2} className="pt-vehicle" />
+                    <Icon name="bin" size={30} strokeWidth={1.3} className="pt-vehicle" />
                     <span className="pt-code">{p.code}</span>
-                    {p.source === 'live' && <span className="pt-live" title="Live sensor">Live sensor</span>}
                   </span>
                 </td>
                 <td className="pt-c-bin">
                   <span className="pt-main">{p.location}</span>
-                  <span className="pt-sub">{p.wasteLabel}</span>
+                  <span className="pt-sub">{p.lastUpdated}</span>
                 </td>
-                <td className="pt-c-route">
-                  <Timeline />
-                  <span className="pt-stops">
-                    <span><span className="pt-main">{p.from.name},</span> <span className="pt-sub-i">{p.from.area}</span></span>
-                    <span><span className="pt-main">{p.to.name},</span> <span className="pt-sub-i">{p.to.area}</span></span>
+                <td className="pt-c-fill">
+                  <span className="pt-fill">
+                    <span className="pt-bar" aria-hidden="true">
+                      <motion.span
+                        className={`pt-bar-fill is-${p.tone}`}
+                        initial={{ width: 0 }}
+                        animate={{ width: `${Math.max(0, Math.min(100, p.fillLevel))}%` }}
+                        transition={fillSpring}
+                      />
+                    </span>
+                    <span className="pt-pct tabular">{Math.round(p.fillLevel)}%</span>
                   </span>
                 </td>
-                <td className="pt-c-load tabular">{p.weightKg.toLocaleString('en-GB')} kg</td>
-                <td className="pt-c-eta tabular">{p.etaLabel}</td>
+                <td className={`pt-c-pred${p.prediction === 'Critical Now' ? ' is-critical' : ''}`}>{p.prediction}</td>
                 <td className={`pt-c-status pt-right pt-st-${p.status}`}>{p.statusLabel}</td>
               </motion.tr>
             ))}
@@ -179,14 +191,14 @@ export default function PickupsTable({ pickups, selectedId, onSelect }) {
 
       {rows.length === 0 && (
         <p className="pt-empty" role="status">
-          <Icon name="truck" size={28} strokeWidth={1.3} />
-          <span>{liveOnly && filter === 'all' ? 'No live sensor pickups right now.' : EMPTY[filter]}</span>
+          <Icon name="bin" size={28} strokeWidth={1.3} />
+          <span>{bins.length === 0 ? EMPTY.all : EMPTY[filter]}</span>
         </p>
       )}
       </div>
       {rows.length > MOBILE_ROWS && (
         <button type="button" className="pt-more" aria-expanded={expanded} onClick={() => setExpanded((v) => !v)}>
-          {expanded ? 'Show fewer pickups' : `Show all ${rows.length} pickups`}
+          {expanded ? 'Show fewer bins' : `Show all ${rows.length} bins`}
         </button>
       )}
     </div>

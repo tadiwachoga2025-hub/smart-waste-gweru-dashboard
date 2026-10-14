@@ -1,136 +1,89 @@
-import { useEffect, useMemo, useRef, useState } from 'react';
-import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
+import { useMemo, useState } from 'react';
+import { motion, useReducedMotion } from 'motion/react';
 import Icon from '../Icon';
-import { fadeUp, spring, stagger } from '../../lib/motion';
+import { fadeUp, stagger } from '../../lib/motion';
 import FleetList from './FleetList';
 import RouteMap from './RouteMap';
-import LoadOverview from './LoadOverview';
-import VehicleInfo from './VehicleInfo';
-import { StatusPill } from './Shared';
-import { routesFor, suggestionFor, adjustedEta } from './fleetUtils';
+import { RouteSummary, EngineRules } from './RouteSummary';
 import './fleet.css';
-
-const LIVE_ID = 'GW-TRK-311';
 
 export default function FleetView({ data }) {
   const reduce = useReducedMotion();
-  const trucks = data?.trucks;
-  const list = useMemo(() => trucks ?? [], [trucks]);
-  const [selectedId, setSelectedId] = useState(
-    () => (list.find((t) => t.id === LIVE_ID) || list[0] || {}).id,
-  );
-  const [applied, setApplied] = useState({});
-  const [dismissed, setDismissed] = useState({});
-  const [toast, setToast] = useState(null);
-  const timer = useRef(null);
+  const bins = data?.bins;
+  const route = data?.route;
+  const [selectedId, setSelectedId] = useState(null);
+  const [nonce, setNonce] = useState(0);
 
-  useEffect(() => () => window.clearTimeout(timer.current), []);
+  const ordered = useMemo(() => {
+    const list = bins ?? [];
+    const onRoute = list.filter((b) => b.onRoute).sort((a, b) => a.routeOrder - b.routeOrder);
+    const rest = list.filter((b) => !b.onRoute).sort((a, b) => b.fillLevel - a.fillLevel);
+    return [...onRoute, ...rest];
+  }, [bins]);
 
-  const truck = list.find((t) => t.id === selectedId) || list[0];
+  if (!route) return null;
 
-  const routes = useMemo(() => (truck ? routesFor(truck) : null), [truck]);
-  const suggestion = useMemo(() => (truck ? suggestionFor(truck, data?.route) : null), [truck, data?.route]);
-
-  if (!truck || !routes) return null;
-
-  const isApplied = !!applied[truck.id];
-  const coords = isApplied ? routes.optimized : routes.current;
-  const eta = adjustedEta(truck, isApplied, suggestion.savedMin);
-  const hasDriver = !!truck.driver;
-
-  const flash = (msg) => {
-    setToast(msg);
-    window.clearTimeout(timer.current);
-    timer.current = window.setTimeout(() => setToast(null), 3200);
-  };
-
-  const container = stagger(0.07);
+  const selected = ordered.find((b) => b.id === selectedId) || ordered[0] || null;
+  const n = route.stops.length;
+  const active = n > 0;
 
   return (
     <motion.main
       className="fv"
-      variants={container}
+      variants={stagger(0.07)}
       initial={reduce ? false : 'hidden'}
       animate="show"
-      aria-label="Fleet"
+      aria-label="Route"
     >
       <motion.div className="fv__list" variants={fadeUp}>
-        <FleetList trucks={list} selectedId={truck.id} onSelect={setSelectedId} />
+        <FleetList bins={ordered} selectedId={selected?.id} onSelect={setSelectedId} />
       </motion.div>
 
       <div className="fv__main">
         <motion.header className="card fv-head" variants={fadeUp}>
           <div className="fv-head__meta">
-            <h1 className="fv-head__id tabular">{truck.id}</h1>
-            <StatusPill status={truck.status} />
-            <span className="fv-stat tabular">
-              <Icon name="weight" size={16} /> {truck.loadKg.toLocaleString()} kg
+            <h1 className="fv-head__id">AI collection route</h1>
+            <span className={`fv-pill fv-pill--${active ? 'ok' : 'muted'}`}>
+              <i className="fv-pill__dot" aria-hidden="true" />
+              {active ? 'Active' : 'No route'}
             </span>
             <span className="fv-stat tabular">
-              <Icon name="stops" size={16} /> {truck.stops} {truck.stops === 1 ? 'stop' : 'stops'}
+              <Icon name="stops" size={16} /> {n} {n === 1 ? 'stop' : 'stops'}
             </span>
             <span className="fv-stat tabular">
-              <Icon name="pin" size={16} /> {truck.distanceKm} km
+              <Icon name="pin" size={16} /> {route.distanceKm} km
             </span>
             <span className="fv-stat tabular">
-              <span className="fv-muted">ETA</span> {eta}
+              <Icon name="weight" size={16} /> {route.fuelLitres} L fuel
+            </span>
+            <span className="fv-stat tabular">
+              <Icon name="truck" size={16} /> {route.trucks} {route.trucks === 1 ? 'truck' : 'trucks'}
             </span>
           </div>
           <div className="fv-head__actions">
-            {hasDriver ? (
-              <a className="fv-btn fv-btn--ghost" href={`tel:${truck.driver}`} aria-label={`Contact driver ${truck.driver}`}>
-                <Icon name="phone" size={16} /> Contact driver
-              </a>
-            ) : (
-              <button type="button" className="fv-btn fv-btn--ghost" disabled title="No driver assigned">
-                <Icon name="phone" size={16} /> Contact driver
-              </button>
-            )}
-            <button
-              type="button"
-              className="fv-btn fv-btn--primary"
-              onClick={() => flash(`Route reassignment requested for ${truck.id}`)}
-            >
-              Reassign route
+            <button type="button" className="fv-btn fv-btn--ghost" onClick={() => setNonce((x) => x + 1)}>
+              <Icon name="locate" size={16} /> Recenter map
             </button>
           </div>
-          <AnimatePresence>
-            {toast ? (
-              <motion.div
-                key="toast"
-                className="fv-toast"
-                role="status"
-                initial={{ opacity: 0, y: -8 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -8 }}
-                transition={spring}
-              >
-                {toast}
-              </motion.div>
-            ) : null}
-          </AnimatePresence>
         </motion.header>
 
         <motion.div variants={fadeUp}>
           <RouteMap
-            truck={truck}
-            coords={coords}
-            suggestion={suggestion}
-            showSuggestion={!isApplied && !dismissed[truck.id]}
-            onApply={() => {
-              setApplied((a) => ({ ...a, [truck.id]: true }));
-              flash('Optimized route applied');
-            }}
-            onDismiss={() => setDismissed((d) => ({ ...d, [truck.id]: true }))}
+            bins={ordered}
+            route={route}
+            selected={selected}
+            nonce={nonce}
+            onSelect={setSelectedId}
+            onRecenter={() => setNonce((x) => x + 1)}
           />
         </motion.div>
 
         <div className="fv__bottom">
           <motion.div variants={fadeUp} className="fv__load">
-            <LoadOverview truck={truck} />
+            <RouteSummary route={route} />
           </motion.div>
           <motion.div variants={fadeUp} className="fv__info">
-            <VehicleInfo truck={truck} />
+            <EngineRules />
           </motion.div>
         </div>
       </div>

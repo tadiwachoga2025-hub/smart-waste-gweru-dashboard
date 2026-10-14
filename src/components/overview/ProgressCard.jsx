@@ -12,8 +12,15 @@ const arcY = (t) => END_Y - DIP * t * (1 - t);
 const ARC = `M0 ${END_Y} Q${W / 2} ${END_Y - DIP / 2} ${W} ${END_Y}`;
 const fmt = (n) => Number(n).toLocaleString('en-US');
 
-export default function ProgressCard({ progress }) {
-  const { collectedKg = 0, goalKg = 1000, pct = 0, byType = [], source } = progress || {};
+export default function ProgressCard({ metrics }) {
+  const { activeBins = 0, trucksAllocated = 0, routeDistanceKm = 0, criticalBins = 0, avgFill = 0 } = metrics || {};
+  const pct = activeBins > 0 ? avgFill : 0;
+  const chips = [
+    { key: 'bins', icon: 'bin', label: 'Active bins', value: fmt(activeBins) },
+    { key: 'trucks', icon: 'truck', label: 'Trucks allocated', value: fmt(trucksAllocated) },
+    { key: 'route', icon: 'route', label: 'Optimised route', value: `${fmt(routeDistanceKm)} km` },
+    { key: 'full', icon: 'hazard', label: 'Full bins', value: fmt(criticalBins), critical: criticalBins > 0 },
+  ];
   const reduce = useReducedMotion();
   const target = Math.min(100, Math.max(0, pct)) / 100;
   const t = useMotionValue(0);
@@ -31,12 +38,11 @@ export default function ProgressCard({ progress }) {
   }, [target, reduce, t]);
 
   return (
-    <section className="card pc-card" aria-label="Today's collection progress">
+    <section className="card pc-card" aria-label="Network fill level">
       <div className="card-head">
-        <h2 className="card-title">Today&rsquo;s Collection Progress</h2>
+        <h2 className="card-title">Network Fill Level</h2>
         <div className="pc-head-right">
-          {source === 'demo' ? <span className="demo-tag">Demo</span> : null}
-          <button type="button" className="card-expand" aria-label="Open collection progress details">
+          <button type="button" className="card-expand" aria-label="Open network fill level details">
             <Icon name="arrowUpRight" size={20} />
           </button>
         </div>
@@ -44,7 +50,7 @@ export default function ProgressCard({ progress }) {
 
       <div className="pc-media">
         <img className="pc-img" src={binsBg} alt="" loading="lazy" decoding="async" />
-        {byType.slice(0, 4).map((c, i) => (
+        {chips.map((c, i) => (
           <motion.div
             key={c.key}
             className="pc-chip"
@@ -56,7 +62,8 @@ export default function ProgressCard({ progress }) {
           >
             <Icon name={c.icon} size={18} />
             <span>
-              {c.label} <span className="pc-chip-kg tabular">{fmt(c.kg)}kg</span>
+              {c.label}{' '}
+              <span className={`pc-chip-val tabular${c.critical ? ' is-critical' : ''}`}>{c.value}</span>
             </span>
           </motion.div>
         ))}
@@ -91,7 +98,13 @@ export default function ProgressCard({ progress }) {
         </div>
 
         <p className="pc-caption tabular">
-          <b>{fmt(collectedKg)} kg</b> / <b>{fmt(goalKg)} kg</b> daily goal ({Math.round(pct)}%)
+          {activeBins > 0 ? (
+            <>
+              Average fill <b>{avgFill}%</b> across <b>{fmt(activeBins)}</b> {activeBins === 1 ? 'bin' : 'bins'}
+            </>
+          ) : (
+            'No bins reporting yet'
+          )}
         </p>
       </div>
     </section>

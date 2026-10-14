@@ -5,10 +5,12 @@ import './left-panels.css';
 
 const TICKS = 32;
 const TICK_IDX = Array.from({ length: TICKS }, (_, i) => i);
+const ICONS = { critical: 'hazard', high: 'bin', medium: 'bin', low: 'bin' };
 
-export default function FleetCard({ fleet }) {
-  const { types = [], source } = fleet || {};
+export default function FleetCard({ metrics }) {
+  const { bands = [], binsToCollect = 0 } = metrics || {};
   const root = useRef(null);
+  const sig = bands.map((b) => b.pct).join(',');
 
   useEffect(() => {
     const el = root.current;
@@ -30,42 +32,46 @@ export default function FleetCard({ fleet }) {
     }, el);
     ScrollTrigger.refresh();
     return () => ctx.revert();
-  }, [types]);
+  }, [sig]);
 
   return (
-    <section className="card fc-card" ref={root} aria-label="Fleet distribution by type">
+    <section className="card fc-card" ref={root} aria-label="Bins by fill level">
       <div className="card-head">
-        <h2 className="card-title">Fleet distribution by type</h2>
+        <h2 className="card-title">Bins by fill level</h2>
         <div className="pc-head-right">
-          {source === 'demo' ? <span className="demo-tag">Demo</span> : null}
-          <button type="button" className="card-expand" aria-label="Open fleet distribution details">
+          <button type="button" className="card-expand" aria-label="Open fill level details">
             <Icon name="arrowUpRight" size={20} />
           </button>
         </div>
       </div>
       <ul className="fc-list">
-        {types.map((t) => {
-          const pct = Math.round(t.pct ?? (t.total ? (t.deployed / t.total) * 100 : 0));
-          const filled = Math.round((pct / 100) * TICKS);
+        {bands.map((b) => {
+          const filled = Math.round((b.pct / 100) * TICKS);
           return (
-            <li className="fc-row" key={t.key}>
-              <span className="fc-ico"><Icon name={t.icon} size={24} strokeWidth={1.4} /></span>
-              <span className="fc-label">{t.label}</span>
-              <span className="fc-count tabular">{t.total}</span>
+            <li className="fc-row" key={b.key} title={`${b.label} ${b.range}`}>
+              <span className="fc-ico"><Icon name={ICONS[b.key] ?? 'bin'} size={24} strokeWidth={1.4} /></span>
+              <span className="fc-label">
+                {b.label} <span className="fc-range tabular">{b.range}</span>
+              </span>
+              <span className="fc-count tabular">{b.count}</span>
               <div
                 className="fc-meter"
+                data-tone={b.key === 'critical' ? 'critical' : undefined}
                 role="img"
-                aria-label={`${t.label}: ${t.deployed} of ${t.total} deployed, ${pct}%`}
+                aria-label={`${b.label} ${b.range}: ${b.count} ${b.count === 1 ? 'bin' : 'bins'}, ${b.pct}% of bins`}
               >
                 {TICK_IDX.map((i) => (
                   <span key={i} className="fc-tick" data-on={i < filled ? '1' : '0'} />
                 ))}
               </div>
-              <span className="fc-pct tabular">{pct}%</span>
+              <span className="fc-pct tabular">{b.pct}%</span>
             </li>
           );
         })}
       </ul>
+      <p className="fc-note tabular">
+        Targeting {binsToCollect} {binsToCollect === 1 ? 'bin' : 'bins'} for collection
+      </p>
     </section>
   );
 }

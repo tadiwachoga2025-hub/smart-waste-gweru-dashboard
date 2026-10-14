@@ -282,36 +282,6 @@ input {
   transform: scale(0.94);
 }
 
-/* Demo-data marker: a dashed ring beside a card title means the card is
-   filled from seeded demo data because the live feed lacks that field.
-   The label text stays available to screen readers; the footer legend
-   explains the ring to sighted users. */
-.demo-tag {
-  display: inline-block;
-  flex-shrink: 0;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  border: 1.5px dashed var(--t-tertiary);
-  font-size: 0;
-  line-height: 0;
-  color: transparent;
-  overflow: hidden;
-  vertical-align: middle;
-}
-
-/* Inline text variant for places where a ring would be ambiguous. */
-.demo-label {
-  display: inline-flex;
-  align-items: center;
-  padding: 2px 8px;
-  border-radius: var(--r-pill);
-  border: 1px dashed var(--line-strong);
-  color: var(--t-tertiary);
-  font-size: 11px;
-  white-space: nowrap;
-}
-
 /* Fallback cross-fade when the View Transitions API is unavailable:
    colors ease for one beat while the theme attribute flips. */
 :root.theme-easing,

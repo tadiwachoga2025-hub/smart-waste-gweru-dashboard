@@ -37,8 +37,8 @@ const App = () => {
 
   const onNavigate = useCallback((item) => {
     setActiveTab(item.key);
-    if (item.key === 'fleet') {
-      setView('fleet');
+    if (item.key === 'route') {
+      setView('route');
       window.__lenis?.scrollTo(0, { immediate: true });
       return;
     }
@@ -50,7 +50,7 @@ const App = () => {
   }, [goOverviewThen]);
 
   const onSearch = useCallback(() => {
-    setActiveTab('routes');
+    setActiveTab('map');
     goOverviewThen(() => {
       scrollToId('map');
       window.setTimeout(() => searchInputRef.current?.focus({ preventScroll: true }), 350);
@@ -59,7 +59,7 @@ const App = () => {
 
   const onSelectAlert = useCallback((binId) => {
     setSelectedId(binId);
-    setActiveTab('routes');
+    setActiveTab('map');
     goOverviewThen(() => scrollToId('map'));
   }, [goOverviewThen]);
 
@@ -93,7 +93,7 @@ const App = () => {
               <Icon name="wifiOff" size={18} />
               {data.status === 'offline'
                 ? 'You are offline. Showing the cached dashboard; live bin levels resume when you reconnect.'
-                : 'The live sensor feed could not be reached. Showing demo data until it recovers.'}
+                : 'The live sensor feed could not be reached. Showing the last data received; it will update when the feed recovers.'}
             </span>
           </motion.div>
         )}
@@ -116,18 +116,20 @@ const App = () => {
                 searchInputRef={searchInputRef}
               />
             ) : (
-              <Suspense fallback={<div className="app-loading" role="status">Loading fleet…</div>}>
+              <Suspense fallback={<div className="app-loading" role="status">Loading route…</div>}>
                 <FleetView data={data} />
               </Suspense>
             )}
           </motion.div>
         </AnimatePresence>
         <footer className="app-foot">
-          <span><span className="demo-tag" aria-hidden="true" /> Demo data — fills panels the live sensor feed doesn&rsquo;t report yet.</span>
+          <span>Bin levels from the ESP32 sensors · predictions and routing from the AI engine.</span>
           <span className="tabular">
             {data.liveCount > 0
-              ? `${data.liveCount} live bin${data.liveCount === 1 ? '' : 's'} · AI route ${data.route.distanceKm} km`
-              : 'Waiting for live bins'}
+              ? `${data.liveCount} bin${data.liveCount === 1 ? '' : 's'} reporting · route ${data.route.distanceKm} km`
+              : data.loaded
+                ? 'No bins in the database yet'
+                : 'Waiting for live bins'}
           </span>
         </footer>
       </main>

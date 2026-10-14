@@ -15,12 +15,12 @@ export default function OverviewView({ data, selectedId, onSelect, searchInputRe
   const spotlight =
     selectedId !== undefined
       ? selectedId
-      : (data.bins.find((b) => b.onRoute && b.source === 'live') ??
+      : (data.bins.find((b) => b.onRoute) ??
           [...data.bins].sort((a, b) => b.fillLevel - a.fillLevel)[0])?.id ?? null;
 
   // Live data changes card heights (more pickups, banners); re-measure the
   // scroll-reveal trigger positions so below-the-fold reveals still fire.
-  const rowCount = data.pickups.length;
+  const rowCount = data.bins.length;
   useEffect(() => {
     const id = window.requestAnimationFrame(() => ScrollTrigger.refresh());
     return () => window.cancelAnimationFrame(id);
@@ -29,9 +29,9 @@ export default function OverviewView({ data, selectedId, onSelect, searchInputRe
   return (
     <motion.div className="overview" variants={stagger(0.06)} initial="hidden" animate="show">
       <div className="overview-left">
-        <motion.div variants={fadeUp}><ProgressCard progress={data.progress} /></motion.div>
-        <motion.div variants={fadeUp}><FleetCard fleet={data.fleet} /></motion.div>
-        <motion.div variants={fadeUp} className="overview-grow"><FuelCard fuel={data.fuel} route={data.route} /></motion.div>
+        <motion.div variants={fadeUp}><ProgressCard metrics={data.metrics} /></motion.div>
+        <motion.div variants={fadeUp}><FleetCard metrics={data.metrics} /></motion.div>
+        <motion.div variants={fadeUp} className="overview-grow"><FuelCard route={data.route} metrics={data.metrics} /></motion.div>
       </div>
       <div className="overview-right">
         <motion.section variants={fadeUp} id="map" aria-label="Bin map" className="overview-map">
@@ -45,7 +45,7 @@ export default function OverviewView({ data, selectedId, onSelect, searchInputRe
           />
         </motion.section>
         <motion.section variants={fadeUp} id="pickups" aria-label="Pickups" className="overview-grow">
-          <PickupsTable pickups={data.pickups} selectedId={spotlight} onSelect={onSelect} />
+          <PickupsTable bins={data.bins} selectedId={spotlight} onSelect={onSelect} />
         </motion.section>
       </div>
     </motion.div>

@@ -6,9 +6,9 @@ import './TopNav.css';
 
 const NAV_ITEMS = [
   { key: 'overview', label: 'Overview' },
-  { key: 'fleet', label: 'Fleet' },
-  { key: 'pickups', label: 'Pickups', scrollTo: 'pickups' },
-  { key: 'routes', label: 'Routes', scrollTo: 'map' },
+  { key: 'route', label: 'Route' },
+  { key: 'bins', label: 'Bins', scrollTo: 'pickups' },
+  { key: 'map', label: 'Map', scrollTo: 'map' },
   { key: 'reports', label: 'Reports', soon: true },
   { key: 'analytics', label: 'Analytics', soon: true },
 ];
@@ -17,7 +17,7 @@ const STATUS_COPY = {
   live: { short: 'Live', long: (n) => `Live sensor feed · ${n} bin${n === 1 ? '' : 's'} reporting` },
   connecting: { short: 'Connecting', long: () => 'Connecting to the sensor feed' },
   offline: { short: 'Offline', long: () => 'Offline · showing cached data' },
-  error: { short: 'Feed error', long: () => 'Sensor feed unreachable · showing demo data' },
+  error: { short: 'Feed error', long: () => 'Sensor feed unreachable · showing last received data' },
 };
 
 const APPEARANCE_OPTIONS = [
