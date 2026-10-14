@@ -11,12 +11,12 @@ function pinIcon({ num, critical, selected }) {
   const key = `${num ?? ''}|${critical}|${selected}`;
   if (!iconCache.has(key)) {
     const cls = `fv-pin${critical ? ' fv-pin--critical' : ''}${selected ? ' is-sel' : ''}`;
-    const label = num != null ? `<text x="15" y="18" text-anchor="middle" font-size="9" font-weight="700" fill="#11100f">${num}</text>` : '';
+    const label = num != null ? `<text x="15" y="18" text-anchor="middle" font-size="9" font-weight="700" fill="#0d0d0d">${num}</text>` : '';
     iconCache.set(
       key,
       L.divIcon({
         className: cls,
-        html: `<svg width="30" height="38" viewBox="0 0 30 38" aria-hidden="true"><path d="M15 1C7.8 1 2 6.8 2 14c0 9.5 13 22 13 22s13-12.500 13-22C28 6.800 22.200 1 15 1Z" fill="#11100f"/><circle cx="15" cy="14" r="${num != null ? 7.5 : 5}" fill="#d7d1b0"/>${label}</svg>`,
+        html: `<svg width="30" height="38" viewBox="0 0 30 38" aria-hidden="true"><path d="M15 1C7.8 1 2 6.8 2 14c0 9.5 13 22 13 22s13-12.500 13-22C28 6.800 22.200 1 15 1Z" fill="#0d0d0d"/><circle cx="15" cy="14" r="${num != null ? 7.5 : 5}" fill="#b0e454"/>${label}</svg>`,
         iconSize: [30, 38],
         iconAnchor: [15, 36],
       }),
@@ -76,13 +76,13 @@ export default function RouteMap({ bins, route, selected, nonce, onSelect, onRec
               positions={route.coords}
               className="fv-route-halo"
               interactive={false}
-              pathOptions={{ color: '#d7d1b0', weight: 9, opacity: 0.9, lineCap: 'round' }}
+              pathOptions={{ color: '#b0e454', weight: 9, opacity: 0.9, lineCap: 'round' }}
             />
             <Polyline
               positions={route.coords}
               className="fv-route-line"
               interactive={false}
-              pathOptions={{ color: '#11100f', weight: 4, lineCap: 'round' }}
+              pathOptions={{ color: '#0d0d0d', weight: 4, lineCap: 'round' }}
             />
           </>
         ) : null}

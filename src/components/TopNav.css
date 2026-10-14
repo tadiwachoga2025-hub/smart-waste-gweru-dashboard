@@ -21,7 +21,7 @@
 }
 .nav-logo {
   display: inline-grid;
-  color: var(--t-primary);
+  color: var(--accent-text);
 }
 .nav-wordmark {
   font-size: 1.6rem;
@@ -225,8 +225,8 @@
   width: 54px;
   height: 54px;
   border-radius: 50%;
-  background: var(--c-khaki);
-  color: var(--c-khaki-ink);
+  background: var(--c-accent);
+  color: var(--c-accent-ink);
   font-size: var(--fs-md);
   font-weight: 600;
   letter-spacing: 0.02em;
@@ -284,13 +284,13 @@
 .nav-seg-btn:hover { color: var(--t-primary); }
 .nav-seg-btn:active > :not(.nav-seg-pill) { transform: scale(0.96); }
 .nav-seg-btn > * { transition: transform 100ms ease-out; }
-.nav-seg-btn.is-on { color: var(--c-khaki-ink); font-weight: 500; }
+.nav-seg-btn.is-on { color: var(--c-accent-ink); font-weight: 500; }
 .nav-seg-pill {
   position: absolute;
   inset: 0;
   z-index: -1;
   border-radius: var(--r-pill);
-  background: var(--c-khaki);
+  background: var(--c-accent);
   box-shadow: 0 1px 3px rgba(17, 16, 15, 0.18);
 }
 .nav-pop-hint {

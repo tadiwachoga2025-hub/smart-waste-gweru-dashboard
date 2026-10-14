@@ -222,8 +222,8 @@ export default function InstallPrompt() {
             onClick={handleDismiss}
             style={{
               width: '100%',
-              backgroundColor: 'var(--c-khaki)',
-              color: 'var(--c-khaki-ink)',
+              backgroundColor: 'var(--c-accent)',
+              color: 'var(--c-accent-ink)',
               border: 'none',
               borderRadius: '999px',
               padding: '10px 16px',
@@ -246,8 +246,8 @@ export default function InstallPrompt() {
               onClick={handleInstall}
               style={{
                 flexGrow: 1,
-                backgroundColor: 'var(--c-khaki)',
-                color: 'var(--c-khaki-ink)',
+                backgroundColor: 'var(--c-accent)',
+                color: 'var(--c-accent-ink)',
                 border: 'none',
                 borderRadius: '999px',
                 padding: '10px 16px',

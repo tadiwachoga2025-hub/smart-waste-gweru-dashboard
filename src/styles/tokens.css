@@ -1,61 +1,71 @@
 /*
- * Smart Waste design tokens — Transcope dark world.
- * Brand palette: #D7D1B0 (khaki), #11100F (shell), #201F1E (surface), #FFFFFF.
+ * Smart Waste design tokens.
+ * Brand palette: Lime Green #B0E454, Forest Green #224F10,
+ * Soft Ivory #EAFFD0, Jet Black #0D0D0D (+ white).
  * Every component reads from these; never hard-code a color in a component.
  */
 :root {
-  /* Brand */
-  --c-khaki: #d7d1b0;
-  --c-khaki-ink: #1b1a17;          /* text on khaki */
-  --c-shell: #11100f;              /* app frame */
-  --c-surface: #1a1918;            /* cards */
-  --c-surface-2: #201f1e;          /* raised: chips, inputs, hover rows */
-  --c-surface-3: #2a2927;          /* pressed / dividers on surface-2 */
+  /* Brand constants */
+  --c-lime: #b0e454;
+  --c-forest: #224f10;
+  --c-ivory: #eaffd0;
+  --c-jet: #0d0d0d;
+
+  /* Accent: lime fills carry forest text (the palette's own pairing) */
+  --c-accent: var(--c-lime);
+  --c-accent-ink: var(--c-forest);
+
+  /* Surfaces (dark appearance: jet black, green-tinted cards) */
+  --c-shell: #0d0d0d;              /* app frame */
+  --c-surface: #151a12;            /* cards */
+  --c-surface-2: #1c2318;          /* raised: chips, inputs, hover rows */
+  --c-surface-3: #29331f;          /* pressed / dividers on surface-2 */
   --c-white: #ffffff;
 
-  /* Text (warm neutrals, all ≥4.5:1 on --c-surface) */
-  --t-primary: #f4f2ec;
-  --t-secondary: #a19d94;
-  --t-tertiary: #8a867d;           /* 4.6:1 on #1a1918 */
-  --t-on-light: #1b1a17;
-  --t-on-light-muted: #6f6b62;
+  /* Text (ivory family, all ≥4.5:1 on --c-surface) */
+  --t-primary: #eaffd0;
+  --t-secondary: #aab99a;
+  --t-tertiary: #8c9a7e;           /* 6:1 on #151a12 */
+  --t-on-light: #0d0d0d;
+  --t-on-light-muted: #4d5a42;
 
   /* Lines */
-  --line: rgba(244, 242, 236, 0.07);
-  --line-strong: rgba(244, 242, 236, 0.13);
+  --line: rgba(234, 255, 208, 0.07);
+  --line-strong: rgba(234, 255, 208, 0.13);
 
-  /* Semantic (bin fill + status) — muted to sit in the khaki world */
-  --s-critical: #e2725b;
-  --s-warning: #e0b660;
-  --s-ok: #9cc58a;
-  --s-info: #c9c3a2;
+  /* Semantic (bin fill + status) */
+  --s-critical: #e8735c;
+  --s-warning: #e5bd5c;
+  --s-ok: #b0e454;
+  --s-info: #c5d9a8;
 
-  /* Gauge gradient (matches reference: rose → sand → green) */
-  --g-gauge: linear-gradient(90deg, #d9837a 0%, #d8b58a 35%, #c9cf8e 65%, #9fcf86 100%);
+  /* Gauge gradient: critical → warning → lime */
+  --g-gauge: linear-gradient(90deg, #e8735c 0%, #e5bd5c 40%, #cfe27a 70%, #b0e454 100%);
 
   /* Map — the basemap is light in both appearances, so anything drawn on
      it uses these fixed inks rather than theme surfaces. */
-  --map-bg: #efe9d8;
-  --pin: #11100f;
-  --ink-fixed: #11100f;
+  --map-bg: #eef3e2;
+  --map-tile-filter: sepia(0.2) hue-rotate(28deg) saturate(1.08) contrast(1.04) brightness(0.99);
+  --pin: #0d0d0d;
+  --ink-fixed: #0d0d0d;
   --paper-fixed: #ffffff;
 
   /* Component surfaces that adapt per appearance */
   --card-edge: none;                                  /* card outline/shadow */
-  --chip-bg: rgba(60, 58, 55, 0.55);                  /* glass chips over the photo */
-  --media-glow: #2a2927;
+  --chip-bg: rgba(28, 35, 24, 0.6);                   /* glass chips over the photo */
+  --media-glow: #1f2a19;
   --media-img-filter: none;
   --media-img-blend: luminosity;
   --media-vignette: rgba(0, 0, 0, 0.45);
-  --knob-ring: rgba(255, 255, 255, 0.12);
-  --tip-bg: #ffffff;
-  --tip-ink: #1b1a17;
-  --chart-bar: #ffffff;
-  --chart-line: #d7d1b0;
-  --nav-material: color-mix(in srgb, #11100f 86%, transparent);
-  --focus-ring: var(--c-khaki);
-  --select-ring: var(--c-khaki);
-  --accent-text: var(--c-khaki);
+  --knob-ring: rgba(234, 255, 208, 0.14);
+  --tip-bg: #eaffd0;
+  --tip-ink: #224f10;
+  --chart-bar: #eaffd0;
+  --chart-line: #b0e454;
+  --nav-material: color-mix(in srgb, #0d0d0d 86%, transparent);
+  --focus-ring: var(--c-lime);
+  --select-ring: var(--c-lime);
+  --accent-text: var(--c-lime);
 
   /* Type */
   --font: 'Space Grotesk Variable', 'Space Grotesk', ui-sans-serif, system-ui, sans-serif;
@@ -97,45 +107,46 @@
   color-scheme: dark;
 }
 
-/* Light appearance — same brand (khaki accent, warm neutrals), inverted
-   luminance. Applied by data-theme="light", set before first paint by the
-   inline script in index.html (system preference unless the user chose). */
+/* Light appearance — soft-ivory frame, near-white cards, jet-black text,
+   forest green for accent text/rings, lime for fills. Applied by
+   data-theme="light", set before first paint by the inline script in
+   index.html (system preference unless the person chose). */
 :root[data-theme='light'] {
-  --c-shell: #efede6;
-  --c-surface: #ffffff;
-  --c-surface-2: #f6f4ee;
-  --c-surface-3: #e5e1d4;
+  --c-shell: #eaffd0;
+  --c-surface: #f9fff1;
+  --c-surface-2: #f0fbe0;
+  --c-surface-3: #d8edbe;
 
-  --t-primary: #11100f;
-  --t-secondary: #57534b;
-  --t-tertiary: #6b675e;            /* 5.5:1 on white, 4.9:1 on shell */
+  --t-primary: #0d0d0d;
+  --t-secondary: #3c4a30;
+  --t-tertiary: #52613f;            /* ≥6:1 on cards and shell */
 
-  --line: rgba(17, 16, 15, 0.08);
-  --line-strong: rgba(17, 16, 15, 0.14);
+  --line: rgba(34, 79, 16, 0.1);
+  --line-strong: rgba(34, 79, 16, 0.18);
 
-  --s-critical: #b4432b;            /* text-safe on white (≥4.5:1) */
+  --s-critical: #b4432b;            /* text-safe on light (≥4.5:1) */
   --s-warning: #8a6110;
-  --s-ok: #3d7533;
-  --s-info: #6f6848;
+  --s-ok: #224f10;
+  --s-info: #3c5a2c;
 
-  --shadow-float: 0 10px 28px -12px rgba(17, 16, 15, 0.22), 0 2px 6px -2px rgba(17, 16, 15, 0.08);
-  --shadow-pin: 0 4px 10px -2px rgba(17, 16, 15, 0.35);
+  --shadow-float: 0 10px 28px -12px rgba(34, 79, 16, 0.25), 0 2px 6px -2px rgba(13, 13, 13, 0.08);
+  --shadow-pin: 0 4px 10px -2px rgba(13, 13, 13, 0.35);
 
-  --card-edge: 0 0 0 1px rgba(17, 16, 15, 0.05), 0 1px 2px rgba(17, 16, 15, 0.04);
-  --chip-bg: rgba(255, 255, 255, 0.72);
-  --media-glow: #ffffff;
-  --media-img-filter: invert(1) contrast(0.82) brightness(1.06);
+  --card-edge: 0 0 0 1px rgba(34, 79, 16, 0.08), 0 1px 2px rgba(34, 79, 16, 0.06);
+  --chip-bg: rgba(249, 255, 241, 0.8);
+  --media-glow: #f9fff1;
+  --media-img-filter: invert(1) contrast(0.8) brightness(1.05);
   --media-img-blend: multiply;
-  --media-vignette: rgba(239, 237, 230, 0.6);
-  --knob-ring: rgba(17, 16, 15, 0.08);
-  --tip-bg: #11100f;
-  --tip-ink: #ffffff;
-  --chart-bar: #11100f;
-  --chart-line: #8a8259;
-  --nav-material: color-mix(in srgb, #efede6 78%, transparent);
-  --focus-ring: #11100f;
-  --select-ring: #8a8259;
-  --accent-text: #6b6443;
+  --media-vignette: rgba(234, 255, 208, 0.6);
+  --knob-ring: rgba(34, 79, 16, 0.14);
+  --tip-bg: #224f10;
+  --tip-ink: #eaffd0;
+  --chart-bar: #224f10;
+  --chart-line: #224f10;
+  --nav-material: color-mix(in srgb, #eaffd0 80%, transparent);
+  --focus-ring: #224f10;
+  --select-ring: #224f10;
+  --accent-text: #224f10;
 
   color-scheme: light;
 }
@@ -184,8 +195,8 @@ body {
 
 /* Browser surfaces carry the design too */
 ::selection {
-  background: var(--c-khaki);
-  color: var(--c-khaki-ink);
+  background: var(--c-accent);
+  color: var(--c-accent-ink);
 }
 :focus-visible {
   outline: 2px solid var(--focus-ring);
@@ -220,7 +231,7 @@ button:disabled {
 input {
   font: inherit;
   color: inherit;
-  caret-color: var(--c-khaki-ink);
+  caret-color: var(--c-accent-ink);
 }
 
 .tabular {

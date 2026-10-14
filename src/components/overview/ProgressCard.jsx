@@ -74,10 +74,10 @@ export default function ProgressCard({ metrics }) {
           <svg viewBox={`0 0 ${W} ${H}`} preserveAspectRatio="none" aria-hidden="true" focusable="false">
             <defs>
               <linearGradient id="pc-grad" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2={W} y2="0">
-                <stop offset="0" stopColor="#d9837a" />
-                <stop offset="0.35" stopColor="#d8b58a" />
-                <stop offset="0.65" stopColor="#c9cf8e" />
-                <stop offset="1" stopColor="#9fcf86" />
+                <stop offset="0" stopColor="#e8735c" />
+                <stop offset="0.35" stopColor="#e5bd5c" />
+                <stop offset="0.65" stopColor="#cfe27a" />
+                <stop offset="1" stopColor="#b0e454" />
               </linearGradient>
             </defs>
             <path d={ARC} fill="none" stroke="url(#pc-grad)" strokeWidth="3" strokeLinecap="round" opacity="0.4" vectorEffect="non-scaling-stroke" />

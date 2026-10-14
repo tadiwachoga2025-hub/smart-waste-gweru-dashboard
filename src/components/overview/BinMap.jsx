@@ -8,8 +8,8 @@ import './map-table.css';
 
 const CENTER = [-19.503, 29.833];
 
-const ROUTE_CASING = { color: '#d7d1b0', weight: 7 };
-const ROUTE_LINE = { color: '#11100f', weight: 3 };
+const ROUTE_CASING = { color: '#b0e454', weight: 7 };
+const ROUTE_LINE = { color: '#0d0d0d', weight: 3 };
 
 const SORTS = [
   { key: 'all', label: 'All bins', test: () => true },

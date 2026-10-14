@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 // index.html applies the same rule before first paint, so there's no flash.
 const KEY = 'sw-appearance';
 export const APPEARANCES = ['system', 'light', 'dark'];
-const SHELL = { light: '#efede6', dark: '#11100f' };
+const SHELL = { light: '#eaffd0', dark: '#0d0d0d' };
 
 function readPreference() {
   try {
