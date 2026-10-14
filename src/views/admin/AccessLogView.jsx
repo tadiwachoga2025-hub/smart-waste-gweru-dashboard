@@ -55,6 +55,8 @@ const ACTION_LABELS = {
   'device.maintenance': 'Logged device maintenance',
   'alerts.settings': 'Changed alert settings',
   'alerts.recipients': 'Changed alert recipients',
+  'alerts.smtp': 'Changed SMTP configuration',
+  'alerts.smtpTest': 'Requested a test email',
   'auth.signout': 'Signed out',
   'auth.signin': 'Signed in',
 };
