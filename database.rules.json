@@ -10,11 +10,14 @@
       ],
       "$uid": {
         ".read": "auth != null && (auth.uid === $uid || auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'admin') || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'officer') && data.child('role').val() === 'driver'))",
-        ".write": "(auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'admin')) || (auth != null && auth.uid === $uid && !data.exists() && newData.child('role').val() === 'citizen' && newData.child('status').val() === 'active' && !newData.child('grants').exists())",
+        ".write": "(auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'admin') && auth.uid !== $uid) || (auth != null && auth.uid === $uid && !data.exists() && newData.child('role').val() === 'citizen' && newData.child('status').val() === 'active' && !newData.child('grants').exists())",
         "name": {
           ".write": "auth != null && auth.uid === $uid && root.child('users').child(auth.uid).child('status').val() === 'active'"
         },
         "phone": {
+          ".write": "auth != null && auth.uid === $uid && root.child('users').child(auth.uid).child('status').val() === 'active'"
+        },
+        "updatedAt": {
           ".write": "auth != null && auth.uid === $uid && root.child('users').child(auth.uid).child('status').val() === 'active'"
         },
         ".validate": "newData.hasChildren(['name', 'email', 'role', 'status']) && ['admin','officer','driver','technician','citizen','device'].contains(newData.child('role').val()) && ['active','inactive'].contains(newData.child('status').val())"
@@ -40,7 +43,7 @@
       ],
       "$jobId": {
         ".read": "(auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'admin')) || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'officer')) || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'driver') && data.child('driverUid').val() === auth.uid)",
-        ".write": "(auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'officer')) || ((auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && root.child('users').child(auth.uid).child('role').val() === 'admin' && root.child('users').child(auth.uid).child('grants').child('jobs.assign').val() === true))",
+        ".write": "((auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'officer')) || ((auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && root.child('users').child(auth.uid).child('role').val() === 'admin' && root.child('users').child(auth.uid).child('grants').child('jobs.assign').val() === true))) && (data.exists() || newData.child('createdBy').val() === auth.uid)",
         "priority": {
           ".validate": "['normal','high','urgent'].contains(newData.val())"
         },
@@ -86,7 +89,7 @@
       ],
       "$issueId": {
         ".read": "(auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'admin')) || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'officer')) || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'driver') && data.child('driverUid').val() === auth.uid)",
-        ".write": "((auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'officer')) || ((auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && root.child('users').child(auth.uid).child('role').val() === 'admin' && root.child('users').child(auth.uid).child('grants').child('jobs.assign').val() === true))) || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'driver') && !data.exists() && newData.child('driverUid').val() === auth.uid && newData.child('status').val() === 'open' && newData.child('createdAt').val() === now && !newData.child('resolvedBy').exists())",
+        ".write": "((auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'officer')) || ((auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && root.child('users').child(auth.uid).child('role').val() === 'admin' && root.child('users').child(auth.uid).child('grants').child('jobs.assign').val() === true))) || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'driver') && !data.exists() && newData.child('driverUid').val() === auth.uid && root.child('jobs').child(newData.child('jobId').val()).child('driverUid').val() === auth.uid && newData.child('status').val() === 'open' && newData.child('createdAt').val() === now && !newData.child('resolvedBy').exists())",
         "type": {
           ".validate": "['inaccessible-bin','breakdown','other'].contains(newData.val())"
         },
@@ -118,6 +121,9 @@
         },
         "officerNote": {
           ".validate": "newData.isString() && newData.val().length <= 1000"
+        },
+        "reviewedBy": {
+          ".validate": "newData.val() === auth.uid"
         },
         "address": {
           ".validate": "newData.isString() && newData.val().length <= 300"
@@ -158,7 +164,7 @@
         "binId"
       ],
       "$mid": {
-        ".write": "((auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'technician')) || ((auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && root.child('users').child(auth.uid).child('role').val() === 'admin' && root.child('users').child(auth.uid).child('grants').child('sensors.manage').val() === true))) || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'officer') && !data.exists() && newData.child('type').val() === 'report' && newData.child('createdAt').val() === now)",
+        ".write": "(((auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'technician')) || ((auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && root.child('users').child(auth.uid).child('role').val() === 'admin' && root.child('users').child(auth.uid).child('grants').child('sensors.manage').val() === true))) && (data.exists() || newData.child('techUid').val() === auth.uid)) || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'officer') && !data.exists() && newData.child('type').val() === 'report' && newData.child('techUid').val() === auth.uid && newData.child('createdAt').val() === now)",
         "type": {
           ".validate": "['inspection','repair','replacement','calibration','report'].contains(newData.val())"
         },
@@ -173,7 +179,7 @@
         "at"
       ],
       "$aid": {
-        ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && !data.exists() && newData.child('actorUid').val() === auth.uid && newData.child('actorRole').val() === root.child('users').child(auth.uid).child('role').val() && newData.child('at').val() === now",
+        ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && !data.exists() && newData.child('actorUid').val() === auth.uid && newData.child('actorRole').val() === root.child('users').child(auth.uid).child('role').val() && newData.child('actorName').val() === root.child('users').child(auth.uid).child('name').val() && newData.child('at').val() === now && (root.child('users').child(auth.uid).child('role').val() !== 'citizen' || ['complaint.submit', 'auth.signout'].contains(newData.child('action').val()))",
         ".validate": "newData.hasChildren(['at', 'actorUid', 'actorRole', 'action'])",
         "actorName": {
           ".validate": "newData.isString() && newData.val().length <= 120"
