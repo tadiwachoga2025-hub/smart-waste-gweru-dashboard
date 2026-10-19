@@ -8,6 +8,11 @@ on:
   workflow_dispatch:
   schedule:
     - cron: "*/5 * * * *"
+  # Belt and braces: hand off immediately when a run finishes, so the loop
+  # survives even if a scheduled trigger is delayed or dropped.
+  workflow_run:
+    workflows: ["Engine"]
+    types: [completed]
 
 concurrency:
   group: smart-waste-engine
@@ -18,7 +23,11 @@ permissions:
 
 jobs:
   engine:
-    if: github.repository == 'tadiwachoga2025-hub/smart-waste-gweru-dashboard'
+    if: >-
+      github.repository == 'tadiwachoga2025-hub/smart-waste-gweru-dashboard' &&
+      (github.event_name != 'workflow_run' ||
+       github.event.workflow_run.conclusion == 'success' ||
+       github.event.workflow_run.conclusion == 'timed_out')
     runs-on: ubuntu-latest
     timeout-minutes: 358
     steps:

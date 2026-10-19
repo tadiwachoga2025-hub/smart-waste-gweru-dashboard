@@ -23,8 +23,13 @@ free Actions minutes:
 
 - a job holds `python engine.py --watch 300` for 5h50m (under the 6h limit);
 - the 5-minute schedule keeps exactly one replacement run queued behind it;
+- `workflow_run` hands off immediately when a run completes (backup for a
+  delayed or dropped schedule);
 - `concurrency: smart-waste-engine` guarantees one writer at a time;
 - each cycle is 5 minutes, so a runner hand-off is shorter than one cycle.
+
+To stop the engine deliberately, disable the workflow first, then cancel the
+active run: `gh workflow disable engine.yml`.
 
 Setup (already done for this repo on 2026-10-19):
 
