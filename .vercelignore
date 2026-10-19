@@ -23,3 +23,10 @@ tests
 scripts
 node_modules
 dist
+# Engine state that lives in the working tree: the trained model, the
+# training history and the liveness file. The engine runs on its own host;
+# the dashboard build never reads them.
+model_xgb.json
+training_history.json
+engine_heartbeat.json
+.claude
