@@ -2,6 +2,10 @@
 *-firebase-adminsdk-*.json
 .env
 .env.*
+# Every local credential file: device-credentials.local (the device password
+# and refresh token), demo-accounts.local, .env.local. Git ignores these, but
+# the CLI uploads the working tree, not the index.
+*.local
 .venv
 __pycache__
 *.pyc
