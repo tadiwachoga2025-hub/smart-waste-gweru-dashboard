@@ -23,6 +23,8 @@ free Actions minutes:
 
 - a job holds `python engine.py --watch 300` for 5h50m (under the 6h limit);
 - the 5-minute schedule keeps exactly one replacement run queued behind it;
+- `.github/workflows/engine-handoff.yml` dispatches the next run as soon as a
+  job completes, so a delayed schedule cannot leave a gap;
 - `concurrency: smart-waste-engine` guarantees one writer at a time;
 - each cycle is 5 minutes, so a runner hand-off is shorter than one cycle.
 

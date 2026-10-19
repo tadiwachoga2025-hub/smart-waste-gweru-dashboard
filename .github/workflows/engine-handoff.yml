@@ -1,0 +1,25 @@
+name: Engine handoff
+
+# Starts the next engine run the moment a long engine job finishes, so the
+# 5h50m job boundary is invisible even if a scheduled trigger is late.
+on:
+  workflow_run:
+    workflows: ["Engine"]
+    types: [completed]
+
+permissions:
+  actions: write
+
+jobs:
+  handoff:
+    if: >-
+      github.repository == 'tadiwachoga2025-hub/smart-waste-gweru-dashboard' &&
+      (github.event.workflow_run.conclusion == 'success' ||
+       github.event.workflow_run.conclusion == 'timed_out')
+    runs-on: ubuntu-latest
+    steps:
+      - name: Dispatch the next engine run
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: gh workflow run engine.yml --ref main
