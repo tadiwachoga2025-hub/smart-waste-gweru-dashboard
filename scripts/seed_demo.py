@@ -2,18 +2,20 @@
 
     .venv/bin/python scripts/seed_demo.py            # create everything
     .venv/bin/python scripts/seed_demo.py --remove   # delete everything it made
+    .venv/bin/python scripts/seed_demo.py --rekey    # reset existing passwords to the demo ones
 
 Uses the same service account as engine.py (Admin SDK), so it needs no login.
 Every record it writes carries `demo: true`, which is what --remove looks for,
 so real data (bins, your administrator account) is never touched.
 
-Demo logins are generated at random and written to demo-accounts.local, a
-gitignored file (mode 600). Passwords are never printed or committed.
+Demo logins use simple, memorable passwords ("<role>123", documented in docs/)
+so anyone can sign in during a pitch. They are written only to
+demo-accounts.local, a gitignored file (mode 600), and are never printed to
+stdout or committed.
 Emails use Gmail "+" aliases, so mail for them lands in the base inbox.
 """
 import argparse
 import os
-import secrets
 import sys
 import time
 
@@ -43,10 +45,8 @@ def alias(tag):
     return f"{local}+{tag}@{domain}"
 
 
-def password():
-    # 16 chars, no look-alikes (0/O, 1/l/I), one symbol so it satisfies any policy
-    alphabet = "abcdefghjkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789"
-    return "".join(secrets.choice(alphabet) for _ in range(15)) + secrets.choice("!#$%")
+def password(role):
+    return f"{role}123"
 
 
 def init():
@@ -82,6 +82,37 @@ def remove():
     print(f"Removed {removed} demo items. Real bins and your administrator account were not touched.")
 
 
+def write_creds(lines):
+    fd = os.open(CREDS_FILE, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
+    with os.fdopen(fd, "w") as f:
+        f.write("SmartWaste demo logins (sample accounts, safe to delete: scripts/seed_demo.py --remove)\n")
+        f.write(f"{'role':<11} {'email':<42} password\n")
+        f.write("\n".join(lines) + "\n")
+    os.chmod(CREDS_FILE, 0o600)
+
+
+def rekey():
+    lines, rekeyed, missing = [], 0, 0
+    for tag, _name, role in ACCOUNTS:
+        email = alias(tag)
+        try:
+            user = auth.get_user_by_email(email)
+        except auth.UserNotFoundError:
+            missing += 1
+            print(f"  missing {role}: {email}")
+            continue
+        auth.update_user(user.uid, password=password(role))
+        lines.append(f"{role:<11} {email:<42} {password(role)}")
+        rekeyed += 1
+        print(f"  rekeyed {role}: {email}")
+    if lines:
+        write_creds(lines)
+        print("  rewrote demo-accounts.local")
+    else:
+        sys.exit("No demo accounts exist. Run without --rekey first.")
+    print(f"Rekeyed {rekeyed} demo accounts; {missing} missing. Passwords are in demo-accounts.local (not committed, not printed).")
+
+
 def seed():
     existing = []
     for tag, _n, _r in ACCOUNTS:
@@ -102,7 +133,7 @@ def seed():
     # --- accounts -----------------------------------------------------------
     uids, lines = {}, []
     for tag, name, role in ACCOUNTS:
-        pw = password()
+        pw = password(role)
         user = auth.create_user(email=alias(tag), password=pw, display_name=name, email_verified=True)
         uids[role] = user.uid
         db.reference(f"users/{user.uid}").set({
@@ -111,11 +142,7 @@ def seed():
         })
         lines.append(f"{role:<11} {alias(tag):<42} {pw}")
         print(f"  created {role}: {alias(tag)}")
-    fd = os.open(CREDS_FILE, os.O_WRONLY | os.O_CREAT | os.O_TRUNC, 0o600)
-    with os.fdopen(fd, "w") as f:
-        f.write("SmartWaste demo logins (sample accounts, safe to delete: scripts/seed_demo.py --remove)\n")
-        f.write(f"{'role':<11} {'email':<42} password\n")
-        f.write("\n".join(lines) + "\n")
+    write_creds(lines)
 
     # --- trucks -------------------------------------------------------------
     db.reference("trucks").push({"label": "Truck 1", "plate": "DEMO-01", "status": "in-service",
@@ -210,6 +237,12 @@ def seed():
 if __name__ == "__main__":
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--remove", action="store_true", help="delete all demo accounts and sample data")
+    ap.add_argument("--rekey", action="store_true", help="reset existing demo account passwords to the simple demo ones")
     args = ap.parse_args()
     init()
-    remove() if args.remove else seed()
+    if args.remove:
+        remove()
+    elif args.rekey:
+        rekey()
+    else:
+        seed()

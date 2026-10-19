@@ -520,8 +520,9 @@ def process_alerts(
                     "(set them in settings or ALERT_TO).", len(due))
         return AlertOutcome(updates, entry("skipped", "No recipients configured"))
     if not config.configured:
-        log.error("SMTP is not configured: copy .env.example to .env and fill in "
-                  "SMTP_USER and SMTP_PASSWORD.")
+        log.error("SMTP is not configured. Set it in the dashboard (Alerts → SMTP "
+                  "configuration: host, port, sender, user and the app password), or "
+                  "provide SMTP_USER and SMTP_PASSWORD in .env (see .env.example).")
         return AlertOutcome(updates, entry("failed", "SMTP is not configured"))
 
     msg = build_message(due, recipients, config.sender or config.user, resources,
@@ -554,8 +555,9 @@ def send_test_email(
     if not recipients:
         return build_log_entry("test", "skipped", [], [], subject, now, "No recipients configured")
     if not config.configured:
-        log.error("SMTP is not configured: copy .env.example to .env and fill in "
-                  "SMTP_USER and SMTP_PASSWORD.")
+        log.error("SMTP is not configured. Set it in the dashboard (Alerts → SMTP "
+                  "configuration: host, port, sender, user and the app password), or "
+                  "provide SMTP_USER and SMTP_PASSWORD in .env (see .env.example).")
         return build_log_entry("test", "failed", [], recipients, subject, now, "SMTP is not configured")
     try:
         sender(msg, config)

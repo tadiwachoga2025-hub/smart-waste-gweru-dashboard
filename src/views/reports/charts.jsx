@@ -1,9 +1,15 @@
-// Tiny dependency-free SVG charts for Reports. Everything is drawn from tokens
-// (CSS variables), scales with its container (viewBox, no pixel widths), and
-// ships a real table alternative (visually hidden) plus visible text labels so
-// colour is never the only signal.
+// Reports charts, built on Recharts and the design tokens. Colours come from
+// CSS variables so light/dark appearances follow automatically; every chart
+// keeps a text equivalent (visible peak/legend plus a screen-reader table) so
+// colour is never the only signal. Entrance animation is disabled under
+// prefers-reduced-motion.
 
 import { useId } from 'react';
+import { useReducedMotion } from 'motion/react';
+import {
+  Bar, BarChart, CartesianGrid, Cell, Pie, PieChart, ResponsiveContainer,
+  Tooltip, XAxis, YAxis,
+} from 'recharts';
 
 const TONE_VAR = {
   critical: 'var(--s-critical)',
@@ -12,6 +18,8 @@ const TONE_VAR = {
   info: 'var(--s-info)',
   muted: 'var(--t-tertiary)',
 };
+
+const tickStyle = { fill: 'var(--t-tertiary)', fontSize: 12 };
 
 function DataTable({ caption, head, rows, id }) {
   return (
@@ -31,100 +39,104 @@ function DataTable({ caption, head, rows, id }) {
   );
 }
 
+/** Token-styled tooltip shared by every chart. */
+function ChartTip({ active, payload, label, unit = '', suffix = '' }) {
+  if (!active || !payload?.length) return null;
+  const row = payload[0];
+  const name = label ?? row?.name ?? '';
+  const share = typeof row?.percent === 'number' ? ` · ${Math.round(row.percent * 100)}%` : suffix;
+  return (
+    <div className="rp-tip">
+      {name ? <span className="rp-tip__label">{name}</span> : null}
+      <span className="rp-tip__val tabular">{row?.value}{unit}{share}</span>
+    </div>
+  );
+}
+
 /**
- * Vertical bars. data: [{ label, value }]. Axis text shows the first and last
- * label and the peak value; the full series is in the table alternative.
+ * Vertical bars with gridlines, labelled axis and hover tooltips.
+ * data: [{ label, value }]. Same signature as before, so callers don't change.
  */
-export function BarSeries({ data, label, unit = '', height = 120 }) {
+export function BarSeries({ data, label, unit = '', height = 220 }) {
   const uid = useId();
-  const max = Math.max(1, ...data.map((d) => d.value));
-  const n = Math.max(1, data.length);
-  const slot = 100 / n;
-  const total = data.reduce((s, d) => s + d.value, 0);
+  const reduce = useReducedMotion();
+  const rows = Array.isArray(data) ? data : [];
+  const max = Math.max(1, ...rows.map((d) => d.value));
+  const total = rows.reduce((s, d) => s + d.value, 0);
   return (
     <figure className="rp-fig" aria-label={label}>
-      <div className="rp-fig__peak" aria-hidden="true">Peak {max}{unit}</div>
-      <svg
-        className="rp-svg"
-        viewBox={`0 0 100 ${height}`}
-        preserveAspectRatio="none"
-        role="img"
-        aria-label={`${label}. Total ${total}${unit}. Details in the table below.`}
-        aria-describedby={uid}
-        style={{ height }}
-      >
-        <line x1="0" x2="100" y1={height - 0.5} y2={height - 0.5} className="rp-axis" vectorEffect="non-scaling-stroke" />
-        {data.map((d, i) => {
-          const h = d.value > 0 ? Math.max(2, (d.value / max) * (height - 4)) : 0;
-          return (
-            <rect
-              key={d.label}
-              x={i * slot + slot * 0.15}
-              width={slot * 0.7}
-              y={height - 1 - h}
-              height={h}
-              style={{ fill: 'var(--chart-bar)' }}
-            >
-              <title>{`${d.label}: ${d.value}${unit}`}</title>
-            </rect>
-          );
-        })}
-      </svg>
-      <div className="rp-fig__axis" aria-hidden="true">
-        <span>{data[0]?.label}</span>
-        <span>{data[data.length - 1]?.label}</span>
-      </div>
-      <DataTable id={uid} caption={label} head={['Period', `Value${unit ? ` (${unit.trim()})` : ''}`]} rows={data.map((d) => [d.label, d.value])} />
+      <div className="rp-fig__peak" aria-hidden="true">Peak {max}{unit} · total {total}{unit}</div>
+      <ResponsiveContainer width="100%" height={height}>
+        <BarChart data={rows} margin={{ top: 4, right: 4, bottom: 0, left: -14 }} role="img" aria-label={`${label}. Total ${total}${unit}. Details in the table below.`} aria-describedby={uid}>
+          <CartesianGrid vertical={false} stroke="var(--line-strong)" strokeDasharray="3 5" />
+          <XAxis dataKey="label" tick={tickStyle} tickLine={false} axisLine={{ stroke: 'var(--line-strong)' }} interval="preserveStartEnd" minTickGap={28} />
+          <YAxis tick={tickStyle} tickLine={false} axisLine={false} allowDecimals={false} width={42} />
+          <Tooltip content={<ChartTip unit={unit} />} cursor={{ fill: 'var(--c-surface-2)' }} />
+          <Bar
+            dataKey="value"
+            fill="var(--chart-bar)"
+            radius={[6, 6, 2, 2]}
+            maxBarSize={44}
+            isAnimationActive={!reduce}
+            animationDuration={700}
+            animationEasing="ease-out"
+          />
+        </BarChart>
+      </ResponsiveContainer>
+      <DataTable id={uid} caption={label} head={['Period', `Value${unit ? ` (${unit.trim()})` : ''}`]} rows={rows.map((d) => [d.label, d.value])} />
     </figure>
   );
 }
 
 /**
- * Part-to-whole as one stacked bar with a visible legend that carries the
- * name, count and percentage of every part. parts: [{ key, label, value, tone }]
+ * Part-to-whole as a donut with a visible legend carrying the name, count
+ * and percentage of every part. parts: [{ key, label, value, tone, range? }]
  */
 export function DonutOrStackedBar({ parts, label }) {
   const uid = useId();
-  const total = parts.reduce((s, p) => s + p.value, 0);
+  const reduce = useReducedMotion();
+  const rows = (Array.isArray(parts) ? parts : []).map((p) => ({ ...p, fill: TONE_VAR[p.tone] ?? TONE_VAR.muted }));
+  const total = rows.reduce((s, p) => s + p.value, 0);
   const pct = (v) => (total ? Math.round((v / total) * 100) : 0);
-  let x = 0;
   return (
     <figure className="rp-fig" aria-label={label}>
-      <svg
-        className="rp-svg rp-svg--stack"
-        viewBox="0 0 100 10"
-        preserveAspectRatio="none"
-        role="img"
-        aria-label={`${label}. ${parts.map((p) => `${p.label} ${p.value}`).join(', ')}.`}
-        aria-describedby={uid}
-      >
-        <rect x="0" y="0" width="100" height="10" style={{ fill: 'var(--c-surface-3)' }} />
-        {total > 0 && parts.map((p) => {
-          const w = (p.value / total) * 100;
-          const seg = (
-            <rect key={p.key} x={x} y="0" width={w} height="10" style={{ fill: TONE_VAR[p.tone] ?? TONE_VAR.muted, stroke: 'var(--c-surface)', strokeWidth: 0.6 }} vectorEffect="non-scaling-stroke">
-              <title>{`${p.label}: ${p.value} (${pct(p.value)}%)`}</title>
-            </rect>
-          );
-          x += w;
-          return seg;
-        })}
-      </svg>
+      <ResponsiveContainer width="100%" height={168}>
+        <PieChart role="img" aria-label={`${label}. ${rows.map((p) => `${p.label} ${p.value}`).join(', ')}.`} aria-describedby={uid}>
+          <Tooltip content={<ChartTip />} cursor={false} />
+          <Pie
+            data={rows}
+            dataKey="value"
+            nameKey="label"
+            innerRadius="64%"
+            outerRadius="88%"
+            paddingAngle={total > 0 ? 3 : 0}
+            cornerRadius={5}
+            strokeWidth={0}
+            isAnimationActive={!reduce}
+            animationDuration={700}
+            animationEasing="ease-out"
+          >
+            {rows.map((p) => (
+              <Cell key={p.key} fill={p.fill} />
+            ))}
+          </Pie>
+        </PieChart>
+      </ResponsiveContainer>
       <ul className="rp-legend">
-        {parts.map((p) => (
+        {rows.map((p) => (
           <li key={p.key}>
-            <i aria-hidden="true" style={{ background: TONE_VAR[p.tone] ?? TONE_VAR.muted }} />
+            <i aria-hidden="true" style={{ background: p.fill }} />
             <span className="rp-legend__name">{p.label}{p.range ? <small> {p.range}</small> : null}</span>
-            <span className="rp-legend__val">{p.value} · {pct(p.value)}%</span>
+            <span className="rp-legend__val tabular">{p.value} · {pct(p.value)}%</span>
           </li>
         ))}
       </ul>
-      <DataTable id={uid} caption={label} head={['Group', 'Count', 'Share']} rows={parts.map((p) => [p.label, p.value, `${pct(p.value)}%`])} />
+      <DataTable id={uid} caption={label} head={['Group', 'Count', 'Share']} rows={rows.map((p) => [p.label, p.value, `${pct(p.value)}%`])} />
     </figure>
   );
 }
 
-/** Small trend line. points: [{ label, value }]. */
+/** Small trend line. points: [{ label, value }]. Still dependency-free. */
 export function Sparkline({ points, label, height = 48 }) {
   const uid = useId();
   const max = Math.max(1, ...points.map((p) => p.value));

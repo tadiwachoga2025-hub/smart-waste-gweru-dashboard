@@ -1,0 +1,23 @@
+# Render Blueprint - always-on engine worker (no HTTP, no spin-down).
+# A background worker is a paid plan on Render; the free GitHub Actions option
+# in .github/workflows/engine.yml runs without a card.
+services:
+  - type: worker
+    name: smart-waste-engine
+    runtime: docker
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    autoDeploy: true
+    plan: starter
+    envVars:
+      - key: FIREBASE_DB_URL
+        value: https://smart-waste-gweru-default-rtdb.firebaseio.com/
+      # Paste the service-account JSON in the Render dashboard for this secret.
+      - key: FIREBASE_CREDENTIALS
+        sync: false
+      - key: POLL_INTERVAL_SEC
+        value: "300"
+      - key: LOG_LEVEL
+        value: INFO
+      - key: DASHBOARD_URL
+        value: https://smart-waste-dashboard-rust.vercel.app

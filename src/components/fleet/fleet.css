@@ -48,6 +48,7 @@ p.fv-muted { margin: 2px 0 0; }
 .fv-list {
   list-style: none; margin: 0; padding: 0 var(--sp-3) var(--sp-3);
   display: grid; gap: var(--sp-2); overflow-y: auto;
+  overscroll-behavior: contain;
   max-height: calc(100vh - 190px);
 }
 .fv-list__item { min-width: 0; }

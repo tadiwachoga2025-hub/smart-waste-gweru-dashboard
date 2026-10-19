@@ -1,0 +1,32 @@
+[Unit]
+Description=Smart Waste Logistics Engine
+Documentation=https://github.com/tadiwachoga2025-hub/smart-waste-gweru-dashboard
+Wants=network-online.target
+After=network-online.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+User=smartwaste
+Group=smartwaste
+WorkingDirectory=/opt/smart-waste/smart-waste-dashboard
+# FIREBASE_CRED_PATH, FIREBASE_DB_URL, DASHBOARD_URL and SMTP_* live here.
+EnvironmentFile=-/etc/smart-waste/engine.env
+Environment=POLL_INTERVAL_SEC=300
+Environment=LOG_LEVEL=INFO
+Environment=ENGINE_DATA_DIR=/var/lib/smart-waste
+Environment=ENGINE_HEARTBEAT_FILE=/var/lib/smart-waste/engine_heartbeat.json
+ExecStart=/usr/bin/python3 -u engine.py --watch ${POLL_INTERVAL_SEC}
+Restart=always
+RestartSec=10
+TimeoutStopSec=45
+KillSignal=SIGTERM
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=full
+ProtectHome=true
+StateDirectory=smart-waste
+StateDirectoryMode=0750
+
+[Install]
+WantedBy=multi-user.target

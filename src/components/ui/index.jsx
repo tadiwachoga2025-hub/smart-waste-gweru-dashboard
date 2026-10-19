@@ -273,9 +273,14 @@ export function Modal({ open, onClose, title, description, wide = false, childre
     document.addEventListener('keydown', onKey);
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
+    // Lock smooth scrolling too: Lenis would otherwise keep consuming wheel
+    // input behind the scrim while the page is meant to be frozen.
+    const lenis = window.__lenis;
+    lenis?.stop();
     return () => {
       document.removeEventListener('keydown', onKey);
       document.body.style.overflow = prevOverflow;
+      lenis?.start();
       returnTo.current?.focus?.();
     };
   }, [open]);
@@ -310,7 +315,7 @@ export function Modal({ open, onClose, title, description, wide = false, childre
               </div>
               <IconButton icon="close" label="Close" onClick={onClose} />
             </div>
-            <div className="ui-modal__body">{children}</div>
+            <div className="ui-modal__body" data-lenis-prevent>{children}</div>
           </motion.div>
         </motion.div>
       )}

@@ -29,7 +29,7 @@ const device = roleIs('device'); // service account for the ESP32 gateway; not a
 
 // Leaf-field validation helpers. Validation lives on the leaves (not the whole
 // record) so partial updates, like a driver ticking one stop, are not rejected.
-const oneOf = (...vals) => `[${vals.map((v) => `'${v}'`).join(',')}].contains(newData.val())`;
+const oneOf = (...vals) => `(${vals.map((v) => `newData.val() === '${v}'`).join(' || ')})`;
 const text = (max) => `newData.isString() && newData.val().length <= ${max}`;
 const coord = (lim) => `newData.isNumber() && newData.val() >= -${lim} && newData.val() <= ${lim}`;
 // Server-stamped creation time: stops clients backdating records.
@@ -64,7 +64,7 @@ const rules = {
         name: { '.write': `auth != null && auth.uid === $uid && ${active}` },
         phone: { '.write': `auth != null && auth.uid === $uid && ${active}` },
         updatedAt: { '.write': `auth != null && auth.uid === $uid && ${active}` },
-        '.validate': `newData.hasChildren(['name', 'email', 'role', 'status']) && ['admin','officer','driver','technician','citizen','device'].contains(newData.child('role').val()) && ['active','inactive'].contains(newData.child('status').val())`,
+        '.validate': `newData.hasChild('name') && newData.hasChild('email') && newData.hasChild('role') && newData.hasChild('status') && (newData.child('role').val() === 'admin' || newData.child('role').val() === 'officer' || newData.child('role').val() === 'driver' || newData.child('role').val() === 'technician' || newData.child('role').val() === 'citizen' || newData.child('role').val() === 'device') && (newData.child('status').val() === 'active' || newData.child('status').val() === 'inactive')`,
       },
     },
 
@@ -200,20 +200,23 @@ const rules = {
         minIntervalMinutes: { '.validate': 'newData.isNumber() && newData.val() >= 5 && newData.val() <= 1440' },
         updatedAt: { '.validate': 'newData.isNumber()' },
       },
-      // SMTP server configuration, managed from the dashboard (admin writes,
-      // engine reads via the Admin SDK). Administrators and officers may read
-      // the connection fields; the password child is admin-read-only so the
-      // secret never reaches officer clients. Whole node is admin-write only.
+      // SMTP server configuration, managed from the dashboard. Admin-only read
+      // and write: Firebase grants a parent .read over its whole subtree, so a
+      // child rule can never hide the password from officers — keeping officers
+      // out of the node is the only rule that works. The engine reads it via
+      // the Admin SDK, which bypasses rules. `passwordSet` is the non-secret
+      // marker the dashboard writes (with the password) when one is saved.
       smtp: {
-        '.read': or(admin, officer),
+        '.read': admin,
         '.write': admin,
-        host: { '.read': or(admin, officer), '.validate': text(253) },
-        port: { '.read': or(admin, officer), '.validate': 'newData.isNumber() && newData.val() >= 1 && newData.val() <= 65535' },
-        sender: { '.read': or(admin, officer), '.validate': text(254) },
-        security: { '.read': or(admin, officer), '.validate': oneOf('starttls', 'ssl', 'none') },
-        user: { '.read': or(admin, officer), '.validate': text(254) },
-        password: { '.read': admin, '.validate': text(500) },
-        updatedAt: { '.read': or(admin, officer), '.validate': 'newData.isNumber()' },
+        host: { '.validate': text(253) },
+        port: { '.validate': 'newData.isNumber() && newData.val() >= 1 && newData.val() <= 65535' },
+        sender: { '.validate': text(254) },
+        security: { '.validate': oneOf('starttls', 'ssl', 'none') },
+        user: { '.validate': text(254) },
+        password: { '.validate': text(500) },
+        passwordSet: { '.validate': 'newData.isBoolean()' },
+        updatedAt: { '.validate': 'newData.isNumber()' },
       },
       // Engine-handled test-email queue. The UI writes {status:'pending'} plus
       // request metadata; the engine sends the test email to the current
@@ -261,8 +264,8 @@ const rules = {
       $aid: {
         // Append-only, and the actor can only describe themselves truthfully:
         // uid, role and name come from their own profile, time from the server.
-        '.write': `${signedInActive} && !data.exists() && newData.child('actorUid').val() === auth.uid && newData.child('actorRole').val() === ${me}.child('role').val() && newData.child('actorName').val() === ${me}.child('name').val() && newData.child('at').val() === now && (${me}.child('role').val() !== 'citizen' || ['complaint.submit', 'auth.signout'].contains(newData.child('action').val()))`,
-        '.validate': `newData.hasChildren(['at', 'actorUid', 'actorRole', 'action'])`,
+        '.write': `${signedInActive} && !data.exists() && newData.child('actorUid').val() === auth.uid && newData.child('actorRole').val() === ${me}.child('role').val() && newData.child('actorName').val() === ${me}.child('name').val() && newData.child('at').val() === now && (${me}.child('role').val() !== 'citizen' || newData.child('action').val() === 'complaint.submit' || newData.child('action').val() === 'auth.signout')`,
+        '.validate': `newData.hasChild('at') && newData.hasChild('actorUid') && newData.hasChild('actorRole') && newData.hasChild('action')`,
         actorName: { '.validate': text(120) },
         action: { '.validate': `newData.isString() && newData.val().length <= 60` },
         target: { '.validate': text(200) },

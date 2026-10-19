@@ -59,6 +59,30 @@ Jobs carry a snapshot of their stops so a driver never reads `/bins`. Officers l
 4. **ESP32 sensors:** the rules deny anonymous writes. Give the gateway its own Auth user with `role: "device"` (not shown in the UI) and have the firmware sign in, or the sensors will stop reporting. Do this *before* publishing the rules.
 5. Re-run `engine.py` once so `publicBins` fills in for the citizen view.
 
+## Demo accounts
+
+Four seeded accounts (one per role below the admin) exist for pitches. Demo-only credentials for a
+demo project — never reuse them or the `leetanmannnn+*` addresses for real accounts.
+
+| Role | Email | Password |
+|---|---|---|
+| Officer | leetanmannnn+officer@gmail.com | officer123 |
+| Driver | leetanmannnn+driver@gmail.com | driver123 |
+| Technician | leetanmannnn+technician@gmail.com | technician123 |
+| Citizen | leetanmannnn+citizen@gmail.com | citizen123 |
+
+Managed by `scripts/seed_demo.py` (Admin SDK — needs the service-account key, no Firebase login):
+
+| Command | What it does |
+|---|---|
+| `.venv/bin/python scripts/seed_demo.py` | Create the accounts plus sample trucks, jobs, issues, complaints, devices and maintenance (all marked `demo: true`) |
+| `.venv/bin/python scripts/seed_demo.py --rekey` | Reset existing demo passwords to the table above and rewrite `demo-accounts.local` |
+| `.venv/bin/python scripts/seed_demo.py --remove` | Delete the demo accounts and every `demo: true` record; real bins and your admin account are never touched |
+
+`demo-accounts.local` (repo root) lists the current logins. It is gitignored (mode 600) and rewritten
+by the script; the passwords are never printed or committed. Emails are Gmail "+" aliases, so mail
+for them lands in the base inbox.
+
 ## Known limits (be upfront in the project report)
 
 - **The internal audit log is advisory, not tamper-proof.** Entries are written by the browser after an action, so a determined staff member can skip logging. The rules make every entry honest (the actor's uid, role and name must be their own, time is server-stamped, entries cannot be edited or deleted, residents may only log two actions) but cannot force an entry to exist. Mandatory audit needs Cloud Function triggers on `users`, `jobs` and `complaints`. The **external log** (`engineLog`, `alertLog`) is stronger: only the engine (Admin SDK) can write it, so clients cannot forge or erase training runs, cycles or email history.

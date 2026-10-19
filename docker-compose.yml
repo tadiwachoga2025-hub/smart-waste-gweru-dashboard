@@ -1,0 +1,35 @@
+services:
+  smart-waste-engine:
+    build: .
+    image: smart-waste-engine:latest
+    container_name: smart-waste-engine
+    restart: always
+    environment:
+      FIREBASE_DB_URL: https://smart-waste-gweru-default-rtdb.firebaseio.com/
+      FIREBASE_CRED_PATH: /run/secrets/firebase.json
+      POLL_INTERVAL_SEC: "300"
+      LOG_LEVEL: INFO
+      ENGINE_DATA_DIR: /data
+      ENGINE_HEARTBEAT_FILE: /data/engine_heartbeat.json
+      DASHBOARD_URL: https://smart-waste-dashboard-rust.vercel.app
+    volumes:
+      # Read-only service account. Keep the file out of the image.
+      - ./smart-waste-gweru-firebase-adminsdk-fbsvc-7281635fb4.json:/run/secrets/firebase.json:ro
+      # Persist the trained model and training history across restarts.
+      - engine-data:/data
+    stop_grace_period: 30s
+    security_opt:
+      - no-new-privileges:true
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "import os,sys,time; p=os.environ['ENGINE_HEARTBEAT_FILE']; sys.exit(0 if os.path.exists(p) and time.time()-os.path.getmtime(p) < 900 else 1)"
+      interval: 60s
+      timeout: 10s
+      retries: 3
+      start_period: 90s
+
+volumes:
+  engine-data:

@@ -9,6 +9,7 @@ import math
 import argparse
 import logging
 import os
+import signal
 import time
 import json
 import traceback
@@ -19,16 +20,78 @@ import notifier
 ENGINE_VERSION = "2.0.0"
 MODEL_FILENAME = "model_xgb.json"
 HISTORY_FILENAME = "training_history.json"
+HEARTBEAT_FILENAME = "engine_heartbeat.json"
+DEFAULT_CRED_FILENAME = "smart-waste-gweru-firebase-adminsdk-fbsvc-7281635fb4.json"
+DEFAULT_DB_URL = "https://smart-waste-gweru-default-rtdb.firebaseio.com/"
 HEARTBEAT_INTERVAL_OK = True  # heartbeat written every cycle
 
 log = logging.getLogger("smartwaste.engine")
 
+# Set by SIGTERM/SIGINT so the watch loop can finish the current step and exit
+# cleanly (Docker stop, systemd stop, GitHub Actions cancellation).
+_stop = False
+
+
+def _request_stop(signum, _frame):
+    global _stop
+    _stop = True
+    log.info("Shutdown requested (signal %s); finishing the current step.", signum)
+
+
+def install_signal_handlers():
+    signal.signal(signal.SIGTERM, _request_stop)
+    signal.signal(signal.SIGINT, _request_stop)
+
+
+def _stop_reset():
+    global _stop
+    _stop = False
+
+
+def _sleep(seconds):
+    """Sleep in small slices so a shutdown signal is honoured promptly."""
+    deadline = time.time() + max(0, seconds)
+    while not _stop and time.time() < deadline:
+        time.sleep(min(1.0, max(0.0, deadline - time.time())))
+
+
 # 1. Initialize Firebase Connection (done in main so `--help` needs no credentials)
 def init_firebase():
-    cred = credentials.Certificate("smart-waste-gweru-firebase-adminsdk-fbsvc-7281635fb4.json")
-    firebase_admin.initialize_app(cred, {
-        'databaseURL': 'https://smart-waste-gweru-default-rtdb.firebaseio.com/'
-    })
+    if firebase_admin._apps:
+        return
+    db_url = os.getenv("FIREBASE_DB_URL", DEFAULT_DB_URL)
+    inline = os.getenv("FIREBASE_CREDENTIALS") or os.getenv("FIREBASE_CRED_JSON")
+    if inline:
+        try:
+            info = json.loads(inline)
+        except ValueError as exc:
+            raise RuntimeError("FIREBASE_CREDENTIALS is not valid JSON") from exc
+        cred = credentials.Certificate(info)
+    else:
+        cred_path = os.getenv("FIREBASE_CRED_PATH") or os.path.join(
+            os.path.dirname(os.path.abspath(__file__)), DEFAULT_CRED_FILENAME)
+        cred = credentials.Certificate(cred_path)
+    firebase_admin.initialize_app(cred, {'databaseURL': db_url})
+
+
+def init_firebase_with_retry(max_backoff=60):
+    """Startup must survive a cold network, DNS blip or slow secret mount.
+
+    A hosted engine that exits on the first failed connection needs an external
+    supervisor; retrying here means the process itself never gives up.
+    """
+    delay = 2
+    while not _stop:
+        try:
+            init_firebase()
+            log.info("Firebase connected: %s", os.getenv("FIREBASE_DB_URL", DEFAULT_DB_URL))
+            return True
+        except Exception as exc:  # noqa: BLE001 - retried below
+            log.error("Firebase init failed: %s: %s (retry in %ss)",
+                      type(exc).__name__, exc, delay)
+            _sleep(delay)
+            delay = min(delay * 2, max_backoff)
+    return False
 
 
 # ---------------------------------------------------------------------------
@@ -43,12 +106,31 @@ def _base_dir():
     return os.path.dirname(os.path.abspath(__file__))
 
 
+def _data_dir():
+    """Writable directory for the model, training history and heartbeat.
+
+    Defaults to the app directory for local runs; containers set
+    ENGINE_DATA_DIR=/data so a mounted volume keeps state across restarts.
+    """
+    path = os.getenv("ENGINE_DATA_DIR") or _base_dir()
+    try:
+        os.makedirs(path, exist_ok=True)
+    except OSError:
+        pass
+    return path
+
+
 def _model_path():
-    return os.path.join(_base_dir(), MODEL_FILENAME)
+    return os.path.join(_data_dir(), MODEL_FILENAME)
 
 
 def _history_path():
-    return os.path.join(_base_dir(), HISTORY_FILENAME)
+    return os.path.join(_data_dir(), HISTORY_FILENAME)
+
+
+def _heartbeat_path():
+    return os.getenv("ENGINE_HEARTBEAT_FILE") or os.path.join(
+        _data_dir(), HEARTBEAT_FILENAME)
 
 
 def _utc_ms():
@@ -205,6 +287,16 @@ def write_heartbeat(state, metrics=None):
     payload = {'at': _utc_ms(), 'state': state, 'engine': ENGINE_VERSION}
     if metrics:
         payload['metrics'] = metrics
+    # Local heartbeat first: container healthchecks can then detect a wedged
+    # process even while Firebase is briefly unreachable.
+    try:
+        path = _heartbeat_path()
+        tmp = path + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as fh:
+            json.dump(payload, fh)
+        os.replace(tmp, path)
+    except OSError as exc:
+        log.warning("local heartbeat write failed: %s", exc)
     try:
         db.reference('engineStatus').set(payload)
     except Exception as exc:  # noqa: BLE001
@@ -534,56 +626,69 @@ def main():
 
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
     notifier.load_env_file(os.path.join(os.path.dirname(os.path.abspath(__file__)), '.env'))
-    init_firebase()
 
     if args.test_email:
+        init_firebase()
         run_test_email(args.dry_run)
         return
     if args.once:
+        init_firebase()
         result = run_logistics_engine(args.dry_run)
         raise SystemExit(0 if result and result.get('ok') else 1)
     if not args.watch:
+        init_firebase()
         run_logistics_engine(args.dry_run)
         return
 
-    # Supervised watch loop: the model stays running. A failed cycle backs off
-    # (30s -> 60s -> ... capped at 5 min) but never exits; every failure is
-    # recorded in /engineLog so the External audit log shows gaps honestly.
-    print(f"Watching: running every {args.watch}s (engine v{ENGINE_VERSION}). Press Ctrl-C to stop.")
-    write_engine_log('lifecycle', 'info', f"Engine started (v{ENGINE_VERSION}), cycle every {args.watch}s.")
+    # Supervised watch loop: the process stays up for the lifetime of the host.
+    # Startup retries forever (cold network, mounted secret, DNS blip) and a
+    # failed cycle backs off (30s -> 60s -> ... capped at 5 min) but never
+    # exits; every failure is recorded in /engineLog so the External audit log
+    # shows gaps honestly.
+    install_signal_handlers()
+    print(f"Watching: running every {args.watch}s (engine v{ENGINE_VERSION}). "
+          "Send SIGTERM or press Ctrl-C to stop.")
+    log.info("Data directory: %s | heartbeat: %s", _data_dir(), _heartbeat_path())
+
+    if not init_firebase_with_retry():
+        log.info("Stopped before Firebase connected.")
+        return
+    write_engine_log('lifecycle', 'info',
+                     f"Engine started (v{ENGINE_VERSION}), cycle every {args.watch}s.")
     write_heartbeat('starting')
     consecutive_failures = 0
-    try:
-        while True:
-            try:
-                result = run_logistics_engine(args.dry_run)
-                if result and result.get('ok'):
-                    consecutive_failures = 0
-                    time.sleep(args.watch)
-                else:
-                    raise RuntimeError((result or {}).get('error', 'cycle-failed'))
-            except KeyboardInterrupt:
-                raise
-            except Exception as exc:
-                consecutive_failures += 1
-                backoff = min(args.watch * (2 ** min(consecutive_failures - 1, 3)), 300)
-                log.error("Engine cycle #%d failed: %s: %s (retry in %ss)",
-                          consecutive_failures, type(exc).__name__, exc, backoff)
-                try:
-                    write_engine_log('error', 'failed',
-                                     f"Cycle failed ({type(exc).__name__}); retry in {backoff}s.",
-                                     {'failures': consecutive_failures})
-                    write_heartbeat('degraded', {'failures': consecutive_failures})
-                except Exception:
-                    pass
-                time.sleep(backoff)
-    except KeyboardInterrupt:
-        print("\nStopped.")
+    while not _stop:
         try:
-            write_engine_log('lifecycle', 'info', "Engine stopped by operator.")
-            write_heartbeat('stopped')
-        except Exception:
-            pass
+            result = run_logistics_engine(args.dry_run)
+            if _stop:
+                break
+            if result and result.get('ok'):
+                consecutive_failures = 0
+                _sleep(args.watch)
+            else:
+                raise RuntimeError((result or {}).get('error', 'cycle-failed'))
+        except Exception as exc:
+            if _stop:
+                break
+            consecutive_failures += 1
+            backoff = min(args.watch * (2 ** min(consecutive_failures - 1, 3)), 300)
+            log.error("Engine cycle #%d failed: %s: %s (retry in %ss)",
+                      consecutive_failures, type(exc).__name__, exc, backoff)
+            try:
+                write_engine_log('error', 'failed',
+                                 f"Cycle failed ({type(exc).__name__}); retry in {backoff}s.",
+                                 {'failures': consecutive_failures})
+                write_heartbeat('degraded', {'failures': consecutive_failures})
+            except Exception:
+                pass
+            _sleep(backoff)
+
+    log.info("Engine stopped.")
+    try:
+        write_engine_log('lifecycle', 'info', "Engine stopped.")
+        write_heartbeat('stopped')
+    except Exception:
+        pass
 
 if __name__ == "__main__":
     main()

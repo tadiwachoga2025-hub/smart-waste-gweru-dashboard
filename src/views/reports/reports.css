@@ -5,8 +5,23 @@
 .rp-fig__peak { color: var(--t-tertiary); font-size: var(--fs-xs); font-variant-numeric: tabular-nums; }
 .rp-fig__axis { display: flex; justify-content: space-between; gap: var(--sp-2); color: var(--t-tertiary); font-size: var(--fs-xs); }
 .rp-svg { display: block; width: 100%; overflow: visible; }
-.rp-svg--stack { height: 14px; border-radius: var(--r-pill); overflow: hidden; }
 .rp-axis { stroke: var(--line-strong); stroke-width: 1; }
+
+/* Recharts output, dressed in tokens. Colours arrive via CSS vars on the
+   elements themselves; here we tune type, focus and the tooltip shell. */
+.rp-fig .recharts-cartesian-axis-tick text { fill: var(--t-tertiary); font-size: 12px; }
+.rp-fig .recharts-wrapper:focus,
+.rp-fig .recharts-surface:focus,
+.rp-fig .recharts-sector:focus,
+.rp-fig .recharts-bar-rectangle:focus { outline: none; }
+.rp-tip {
+  display: flex; align-items: baseline; gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  border: 1px solid var(--line-strong); border-radius: var(--r-sm);
+  background: var(--c-surface-2); box-shadow: var(--shadow-float);
+}
+.rp-tip__label { color: var(--t-secondary); font-size: var(--fs-sm); }
+.rp-tip__val { color: var(--t-primary); font-size: var(--fs-sm); font-weight: 600; font-variant-numeric: tabular-nums; }
 
 .rp-legend { display: grid; gap: var(--sp-2); margin: var(--sp-2) 0 0; padding: 0; list-style: none; }
 .rp-legend li { display: flex; align-items: center; gap: var(--sp-3); font-size: var(--fs-sm); }

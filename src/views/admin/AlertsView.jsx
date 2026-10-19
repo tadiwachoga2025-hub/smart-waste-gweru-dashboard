@@ -50,7 +50,10 @@ function effective(item) {
   };
 }
 
-/** Effective SMTP settings. The password is never read back: it stays write-only. */
+/**
+ * Effective SMTP settings. The password is never read back: it stays write-only.
+ * `passwordSet` is the server-side marker that a password has been stored.
+ */
 function effectiveSmtp(item) {
   return {
     host: typeof item?.host === 'string' ? item.host : SMTP_DEFAULTS.host,
@@ -58,6 +61,7 @@ function effectiveSmtp(item) {
     sender: typeof item?.sender === 'string' ? item.sender : SMTP_DEFAULTS.sender,
     security: SMTP_SECURITY.includes(item?.security) ? item.security : SMTP_DEFAULTS.security,
     user: typeof item?.user === 'string' ? item.user : SMTP_DEFAULTS.user,
+    passwordSet: item?.passwordSet === true,
   };
 }
 
@@ -130,7 +134,7 @@ export default function AlertsView({ data }) {
   const canManage = can('alerts.manage');
 
   const settings = useRecord('settings/alerts', { enabled: canView });
-  const smtp = useRecord('settings/smtp', { enabled: canView });
+  const smtp = useRecord('settings/smtp', { enabled: canManage });
   const smtpTest = useRecord('settings/smtpTest', { enabled: canView });
   const log = useList('alertLog', { limit: 100, enabled: canView });
   const entries = useNewestFirst(log.items, 'at');
@@ -152,6 +156,7 @@ export default function AlertsView({ data }) {
   // never filled from the server, so the stored secret is never rendered back.
   const [smtpDraft, setSmtpDraft] = useState(null);
   const [smtpSaving, setSmtpSaving] = useState(false);
+  const [smtpPasswordError, setSmtpPasswordError] = useState('');
   const [testBusy, setTestBusy] = useState(false);
 
   if (!canView) {
@@ -193,7 +198,10 @@ export default function AlertsView({ data }) {
     user: savedSmtp.user,
     password: '',
   };
-  const editSmtp = (field, value) => setSmtpDraft({ ...smtpForm, [field]: value });
+  const editSmtp = (field, value) => {
+    setSmtpDraft({ ...smtpForm, [field]: value });
+    if (field === 'password') setSmtpPasswordError('');
+  };
   const smtpErrors = validateSmtp(smtpForm);
   const smtpNext = Object.keys(smtpErrors).length === 0
     ? {
@@ -215,7 +223,10 @@ export default function AlertsView({ data }) {
   const smtpReady = smtpSaved
     && savedSmtp.host.trim() !== ''
     && Number.isInteger(savedSmtp.port)
-    && savedSmtp.sender.trim() !== '';
+    && savedSmtp.port >= 1
+    && savedSmtp.port <= 65535
+    && savedSmtp.sender.trim() !== ''
+    && savedSmtp.passwordSet;
   const bins = data?.bins;
   const binsKnown = Array.isArray(bins) && (bins.length > 0 || data?.status === 'live');
   const fullNow = binsKnown ? bins.filter((b) => Number(b.fillLevel) >= saved.criticalAt).length : null;
@@ -271,17 +282,26 @@ export default function AlertsView({ data }) {
   };
 
   const saveSmtp = async () => {
-    if (!canManage || !smtpNext || !smtpChanged || smtpSaving) return;
+    if (!canManage || !smtpNext || smtpSaving) return;
+    if (!smtpPasswordChanged && !savedSmtp.passwordSet) {
+      setSmtpPasswordError('Enter the app password from Google.');
+      return;
+    }
+    if (!smtpChanged) return;
     setSmtpSaving(true);
     try {
       const payload = { ...smtpNext };
-      if (smtpPasswordChanged) payload.password = smtpForm.password;
+      if (smtpPasswordChanged) {
+        payload.password = smtpForm.password;
+        payload.passwordSet = true;
+      }
       await patchRecord(
         'settings/smtp',
         payload,
         { action: 'alerts.smtp', detail: describeSmtpChanges(savedSmtp, smtpNext, smtpPasswordChanged) || 'Updated SMTP settings' },
       );
       setSmtpDraft(null);
+      setSmtpPasswordError('');
       toast.success('SMTP settings saved.');
     } catch {
       toast.error('Could not save the SMTP settings. Check your connection and try again.');
@@ -371,9 +391,9 @@ export default function AlertsView({ data }) {
         />
         <Stat
           label="SMTP server"
-          value={smtp.loading ? '…' : smtpReady ? 'Configured' : 'Not configured'}
-          tone={smtp.loading ? undefined : smtpReady ? 'ok' : 'warning'}
-          hint={smtp.loading ? undefined : smtpReady ? savedSmtp.host : 'Set it up under SMTP configuration'}
+          value={!canManage ? 'Admin only' : smtp.loading ? '…' : smtpReady ? 'Configured' : 'Not configured'}
+          tone={!canManage || smtp.loading ? undefined : smtpReady ? 'ok' : 'warning'}
+          hint={!canManage ? undefined : smtp.loading ? undefined : smtpReady ? savedSmtp.host : 'Set it up under SMTP configuration'}
         />
         <Stat
           label={`Bins at ${saved.criticalAt}% or more`}
@@ -508,135 +528,153 @@ export default function AlertsView({ data }) {
           )}
 
           {tab === 'smtp' && (
-            <Panel title="SMTP server" note={smtpSaved ? `Last saved ${timeAgo(smtp.item.updatedAt)}` : 'Not configured yet'}>
+            <Panel
+              title="SMTP server"
+              note={!canManage ? undefined : smtpSaved ? `Last saved ${timeAgo(smtp.item.updatedAt)}` : 'Not configured yet'}
+            >
               <DataError error={smtp.error} />
               <DataError error={smtpTest.error} />
-              {!smtpReady && !smtp.loading && !smtp.error && (
-                <Notice tone="warning">
-                  The SMTP server is not configured yet, so no emails can go out. Fill in the form below and save.
-                </Notice>
-              )}
-              {smtp.loading ? (
-                <LoadingRows rows={4} />
+              {!canManage ? (
+                <EmptyState icon="bell" title="Administrator only">
+                  Sign in as an administrator to view or change the SMTP server.
+                </EmptyState>
               ) : (
-                <form className="alr-smtp" onSubmit={(e) => { e.preventDefault(); saveSmtp(); }} noValidate>
-                  <div className="alr-smtp__grid">
-                    <Field
-                      label="Host"
-                      type="text"
-                      inputMode="url"
-                      autoComplete="off"
-                      placeholder="smtp.gmail.com"
-                      value={smtpForm.host}
-                      error={smtpShown.host}
-                      hint="The mail server that sends the emails."
-                      disabled={!canManage || smtpSaving}
-                      onChange={(e) => editSmtp('host', e.target.value)}
-                    />
-                    <Field
-                      label="Port"
-                      type="number"
-                      inputMode="numeric"
-                      min={1}
-                      max={65535}
-                      step={1}
-                      value={smtpForm.port}
-                      error={smtpShown.port}
-                      hint="587 for STARTTLS, 465 for SSL."
-                      disabled={!canManage || smtpSaving}
-                      onChange={(e) => editSmtp('port', e.target.value)}
-                    />
-                    <Field
-                      label="Sender address"
-                      type="email"
-                      inputMode="email"
-                      autoComplete="off"
-                      placeholder="alerts@example.com"
-                      value={smtpForm.sender}
-                      error={smtpShown.sender}
-                      hint="Shown as the From address on every alert."
-                      disabled={!canManage || smtpSaving}
-                      onChange={(e) => editSmtp('sender', e.target.value)}
-                    />
-                    <Field
-                      label="Security"
-                      as="select"
-                      value={smtpForm.security}
-                      error={smtpShown.security}
-                      hint="How the connection to the mail server is protected."
-                      disabled={!canManage || smtpSaving}
-                      onChange={(e) => editSmtp('security', e.target.value)}
-                    >
-                      {SMTP_SECURITY.map((s) => <option key={s} value={s}>{SMTP_SECURITY_LABEL[s]}</option>)}
-                    </Field>
-                    <Field
-                      label="Username"
-                      type="text"
-                      autoComplete="username"
-                      placeholder="alerts@example.com"
-                      value={smtpForm.user}
-                      error={smtpShown.user}
-                      hint="The login for the mail server."
-                      disabled={!canManage || smtpSaving}
-                      onChange={(e) => editSmtp('user', e.target.value)}
-                    />
-                    <Field
-                      label="Password"
-                      type="password"
-                      autoComplete="new-password"
-                      placeholder={canManage ? 'Enter to set/replace' : 'Managed by administrator'}
-                      value={canManage ? smtpForm.password : ''}
-                      hint={canManage
-                        ? (smtpSaved ? 'Saved •••• — enter a new one to replace.' : 'Stored on the server and never shown back.')
-                        : 'Only an administrator can change this.'}
-                      disabled={!canManage || smtpSaving}
-                      onChange={(e) => editSmtp('password', e.target.value)}
-                    />
-                  </div>
-                  {canManage && (
-                    <div className="ui-form__actions">
-                      {smtpDirty && (
-                        <Button onClick={() => setSmtpDraft(null)} disabled={smtpSaving}>Discard changes</Button>
-                      )}
-                      <Button type="submit" variant="primary" loading={smtpSaving} disabled={!smtpDirty || !smtpNext || !smtpChanged}>
-                        Save SMTP settings
-                      </Button>
-                    </div>
+                <>
+                  {!smtpReady && !smtp.loading && !smtp.error && (
+                    <Notice tone="warning">
+                      The SMTP server is not configured yet, so no emails can go out. Fill in the form below and save.
+                    </Notice>
                   )}
-                  {canManage && (
-                    <div className="alr-test">
-                      <div className="alr-test__row">
-                        <Button
-                          variant="ghost"
-                          icon="bell"
-                          loading={testBusy || testPending}
-                          disabled={testPending}
-                          onClick={sendTestEmail}
+                  {smtp.loading ? (
+                    <LoadingRows rows={4} />
+                  ) : (
+                    <form className="alr-smtp" onSubmit={(e) => { e.preventDefault(); saveSmtp(); }} noValidate>
+                      <div className="alr-smtp__grid">
+                        <Field
+                          label="Host"
+                          type="text"
+                          inputMode="url"
+                          autoComplete="off"
+                          placeholder="smtp.gmail.com"
+                          value={smtpForm.host}
+                          error={smtpShown.host}
+                          hint="The mail server that sends the emails."
+                          disabled={!canManage || smtpSaving}
+                          onChange={(e) => editSmtp('host', e.target.value)}
+                        />
+                        <Field
+                          label="Port"
+                          type="number"
+                          inputMode="numeric"
+                          min={1}
+                          max={65535}
+                          step={1}
+                          value={smtpForm.port}
+                          error={smtpShown.port}
+                          hint="587 for STARTTLS, 465 for SSL."
+                          disabled={!canManage || smtpSaving}
+                          onChange={(e) => editSmtp('port', e.target.value)}
+                        />
+                        <Field
+                          label="Sender address"
+                          type="email"
+                          inputMode="email"
+                          autoComplete="off"
+                          placeholder="alerts@example.com"
+                          value={smtpForm.sender}
+                          error={smtpShown.sender}
+                          hint="Shown as the From address on every alert."
+                          disabled={!canManage || smtpSaving}
+                          onChange={(e) => editSmtp('sender', e.target.value)}
+                        />
+                        <Field
+                          label="Security"
+                          as="select"
+                          value={smtpForm.security}
+                          error={smtpShown.security}
+                          hint="How the connection to the mail server is protected."
+                          disabled={!canManage || smtpSaving}
+                          onChange={(e) => editSmtp('security', e.target.value)}
                         >
-                          Send test email
-                        </Button>
-                        <span className="alr-test__hint">
-                          {recipients.length === 0
-                            ? 'Add a recipient first — the test goes to everyone on the list.'
-                            : `The test goes to all ${plural(recipients.length, 'recipient')}.`}
-                        </span>
+                          {SMTP_SECURITY.map((s) => <option key={s} value={s}>{SMTP_SECURITY_LABEL[s]}</option>)}
+                        </Field>
+                        <Field
+                          label="Username"
+                          type="text"
+                          autoComplete="username"
+                          placeholder="alerts@example.com"
+                          value={smtpForm.user}
+                          error={smtpShown.user}
+                          hint="The login for the mail server."
+                          disabled={!canManage || smtpSaving}
+                          onChange={(e) => editSmtp('user', e.target.value)}
+                        />
+                        <Field
+                          label="Password"
+                          type="password"
+                          autoComplete="new-password"
+                          placeholder="Enter to set/replace"
+                          value={smtpForm.password}
+                          error={smtpPasswordError}
+                          hint={savedSmtp.passwordSet
+                            ? 'Saved •••• — leave empty to keep the saved password.'
+                            : 'Not set — required to send alerts.'}
+                          disabled={!canManage || smtpSaving}
+                          onChange={(e) => editSmtp('password', e.target.value)}
+                        />
                       </div>
-                      {test && (
-                        <div className="alr-test__status" role="status">
-                          <Pill tone={testTone}>{testLabel}</Pill>
-                          <span className="alr-test__result">
-                            {test.status === 'pending'
-                              ? `Requested ${timeAgo(test.requestedAt)}${test.requestedByName ? ` by ${test.requestedByName}` : ''} — waiting for the engine…`
-                              : test.result || (test.status === 'sent' ? 'Test email sent.' : 'Test email failed.')}
+                      <div className="ui-form__actions">
+                        {smtpDirty && (
+                          <Button
+                            onClick={() => { setSmtpDraft(null); setSmtpPasswordError(''); }}
+                            disabled={smtpSaving}
+                          >
+                            Discard changes
+                          </Button>
+                        )}
+                        <Button
+                          type="submit"
+                          variant="primary"
+                          loading={smtpSaving}
+                          disabled={!smtpNext || (!smtpChanged && savedSmtp.passwordSet)}
+                        >
+                          Save SMTP settings
+                        </Button>
+                      </div>
+                      <div className="alr-test">
+                        <div className="alr-test__row">
+                          <Button
+                            variant="ghost"
+                            icon="bell"
+                            loading={testBusy || testPending}
+                            disabled={testPending}
+                            onClick={sendTestEmail}
+                          >
+                            Send test email
+                          </Button>
+                          <span className="alr-test__hint">
+                            {recipients.length === 0
+                              ? 'Add a recipient first — the test goes to everyone on the list.'
+                              : `The test goes to all ${plural(recipients.length, 'recipient')}.`}
                           </span>
-                          {test.status !== 'pending' && test.handledAt != null && (
-                            <span className="alr-test__when">{timeAgo(test.handledAt)}</span>
-                          )}
                         </div>
-                      )}
-                    </div>
+                        {test && (
+                          <div className="alr-test__status" role="status">
+                            <Pill tone={testTone}>{testLabel}</Pill>
+                            <span className="alr-test__result">
+                              {test.status === 'pending'
+                                ? `Requested ${timeAgo(test.requestedAt)}${test.requestedByName ? ` by ${test.requestedByName}` : ''} — waiting for the engine…`
+                                : test.result || (test.status === 'sent' ? 'Test email sent.' : 'Test email failed.')}
+                            </span>
+                            {test.status !== 'pending' && test.handledAt != null && (
+                              <span className="alr-test__when">{timeAgo(test.handledAt)}</span>
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    </form>
                   )}
-                </form>
+                </>
               )}
             </Panel>
           )}

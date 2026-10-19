@@ -20,7 +20,7 @@
         "updatedAt": {
           ".write": "auth != null && auth.uid === $uid && root.child('users').child(auth.uid).child('status').val() === 'active'"
         },
-        ".validate": "newData.hasChildren(['name', 'email', 'role', 'status']) && ['admin','officer','driver','technician','citizen','device'].contains(newData.child('role').val()) && ['active','inactive'].contains(newData.child('status').val())"
+        ".validate": "newData.hasChild('name') && newData.hasChild('email') && newData.hasChild('role') && newData.hasChild('status') && (newData.child('role').val() === 'admin' || newData.child('role').val() === 'officer' || newData.child('role').val() === 'driver' || newData.child('role').val() === 'technician' || newData.child('role').val() === 'citizen' || newData.child('role').val() === 'device') && (newData.child('status').val() === 'active' || newData.child('status').val() === 'inactive')"
       }
     },
     "bins": {
@@ -45,7 +45,7 @@
         ".read": "(auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'admin')) || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'officer')) || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'driver') && data.child('driverUid').val() === auth.uid)",
         ".write": "((auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'officer')) || ((auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && root.child('users').child(auth.uid).child('role').val() === 'admin' && root.child('users').child(auth.uid).child('grants').child('jobs.assign').val() === true))) && (data.exists() || newData.child('createdBy').val() === auth.uid)",
         "priority": {
-          ".validate": "['normal','high','urgent'].contains(newData.val())"
+          ".validate": "(newData.val() === 'normal' || newData.val() === 'high' || newData.val() === 'urgent')"
         },
         "title": {
           ".validate": "newData.isString() && newData.val().length <= 120"
@@ -58,7 +58,7 @@
         },
         "status": {
           ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'driver') && data.parent().child('driverUid').val() === auth.uid && ((data.val() === 'assigned' && newData.val() === 'started') || (data.val() === 'started' && newData.val() === 'completed'))",
-          ".validate": "['assigned','started','completed','cancelled'].contains(newData.val())"
+          ".validate": "(newData.val() === 'assigned' || newData.val() === 'started' || newData.val() === 'completed' || newData.val() === 'cancelled')"
         },
         "startedAt": {
           ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'driver') && data.parent().child('driverUid').val() === auth.uid"
@@ -91,10 +91,10 @@
         ".read": "(auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'admin')) || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'officer')) || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'driver') && data.child('driverUid').val() === auth.uid)",
         ".write": "((auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'officer')) || ((auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && root.child('users').child(auth.uid).child('role').val() === 'admin' && root.child('users').child(auth.uid).child('grants').child('jobs.assign').val() === true))) || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'driver') && !data.exists() && newData.child('driverUid').val() === auth.uid && root.child('jobs').child(newData.child('jobId').val()).child('driverUid').val() === auth.uid && newData.child('status').val() === 'open' && newData.child('createdAt').val() === now && !newData.child('resolvedBy').exists())",
         "type": {
-          ".validate": "['inaccessible-bin','breakdown','other'].contains(newData.val())"
+          ".validate": "(newData.val() === 'inaccessible-bin' || newData.val() === 'breakdown' || newData.val() === 'other')"
         },
         "status": {
-          ".validate": "['open','resolved'].contains(newData.val())"
+          ".validate": "(newData.val() === 'open' || newData.val() === 'resolved')"
         },
         "note": {
           ".validate": "newData.isString() && newData.val().length <= 1000"
@@ -111,10 +111,10 @@
         ".read": "(auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'admin')) || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'officer')) || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'citizen') && data.child('citizenUid').val() === auth.uid)",
         ".write": "((auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'officer')) || ((auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && root.child('users').child(auth.uid).child('role').val() === 'admin' && root.child('users').child(auth.uid).child('grants').child('complaints.review').val() === true))) || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'citizen') && !data.exists() && newData.child('citizenUid').val() === auth.uid && newData.child('status').val() === 'new' && newData.child('createdAt').val() === now && !newData.child('officerNote').exists() && !newData.child('reviewedBy').exists() && !newData.child('resolvedAt').exists() && !newData.child('jobId').exists())",
         "type": {
-          ".validate": "['overflowing_bin','missed_collection','other'].contains(newData.val())"
+          ".validate": "(newData.val() === 'overflowing_bin' || newData.val() === 'missed_collection' || newData.val() === 'other')"
         },
         "status": {
-          ".validate": "['new','reviewing','assigned','resolved','rejected'].contains(newData.val())"
+          ".validate": "(newData.val() === 'new' || newData.val() === 'reviewing' || newData.val() === 'assigned' || newData.val() === 'resolved' || newData.val() === 'rejected')"
         },
         "note": {
           ".validate": "newData.isString() && newData.val().length <= 2000"
@@ -144,7 +144,7 @@
       "$truckId": {
         ".write": "(auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'officer')) || ((auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && root.child('users').child(auth.uid).child('role').val() === 'admin' && root.child('users').child(auth.uid).child('grants').child('jobs.assign').val() === true))",
         "status": {
-          ".validate": "['available','in-service','maintenance'].contains(newData.val())"
+          ".validate": "(newData.val() === 'available' || newData.val() === 'in-service' || newData.val() === 'maintenance')"
         }
       }
     },
@@ -153,7 +153,7 @@
       "$deviceId": {
         ".write": "(auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'technician')) || ((auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && root.child('users').child(auth.uid).child('role').val() === 'admin' && root.child('users').child(auth.uid).child('grants').child('sensors.manage').val() === true))",
         "status": {
-          ".validate": "['active','faulty','replaced','retired'].contains(newData.val())"
+          ".validate": "(newData.val() === 'active' || newData.val() === 'faulty' || newData.val() === 'replaced' || newData.val() === 'retired')"
         }
       }
     },
@@ -166,7 +166,7 @@
       "$mid": {
         ".write": "(((auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'technician')) || ((auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && root.child('users').child(auth.uid).child('role').val() === 'admin' && root.child('users').child(auth.uid).child('grants').child('sensors.manage').val() === true))) && (data.exists() || newData.child('techUid').val() === auth.uid)) || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'officer') && !data.exists() && newData.child('type').val() === 'report' && newData.child('techUid').val() === auth.uid && newData.child('createdAt').val() === now)",
         "type": {
-          ".validate": "['inspection','repair','replacement','calibration','report'].contains(newData.val())"
+          ".validate": "(newData.val() === 'inspection' || newData.val() === 'repair' || newData.val() === 'replacement' || newData.val() === 'calibration' || newData.val() === 'report')"
         },
         "note": {
           ".validate": "newData.isString() && newData.val().length <= 1000"
@@ -200,34 +200,30 @@
         }
       },
       "smtp": {
-        ".read": "(auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'admin')) || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'officer'))",
+        ".read": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'admin')",
         ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'admin')",
         "host": {
-          ".read": "(auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'admin')) || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'officer'))",
           ".validate": "newData.isString() && newData.val().length <= 253"
         },
         "port": {
-          ".read": "(auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'admin')) || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'officer'))",
           ".validate": "newData.isNumber() && newData.val() >= 1 && newData.val() <= 65535"
         },
         "sender": {
-          ".read": "(auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'admin')) || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'officer'))",
           ".validate": "newData.isString() && newData.val().length <= 254"
         },
         "security": {
-          ".read": "(auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'admin')) || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'officer'))",
-          ".validate": "['starttls','ssl','none'].contains(newData.val())"
+          ".validate": "(newData.val() === 'starttls' || newData.val() === 'ssl' || newData.val() === 'none')"
         },
         "user": {
-          ".read": "(auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'admin')) || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'officer'))",
           ".validate": "newData.isString() && newData.val().length <= 254"
         },
         "password": {
-          ".read": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'admin')",
           ".validate": "newData.isString() && newData.val().length <= 500"
         },
+        "passwordSet": {
+          ".validate": "newData.isBoolean()"
+        },
         "updatedAt": {
-          ".read": "(auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'admin')) || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'officer'))",
           ".validate": "newData.isNumber()"
         }
       },
@@ -244,7 +240,7 @@
           ".validate": "newData.isString() && newData.val().length <= 120"
         },
         "status": {
-          ".validate": "['pending','sent','failed'].contains(newData.val())"
+          ".validate": "(newData.val() === 'pending' || newData.val() === 'sent' || newData.val() === 'failed')"
         },
         "result": {
           ".validate": "newData.isString() && newData.val().length <= 500"
@@ -275,8 +271,8 @@
         "at"
       ],
       "$aid": {
-        ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && !data.exists() && newData.child('actorUid').val() === auth.uid && newData.child('actorRole').val() === root.child('users').child(auth.uid).child('role').val() && newData.child('actorName').val() === root.child('users').child(auth.uid).child('name').val() && newData.child('at').val() === now && (root.child('users').child(auth.uid).child('role').val() !== 'citizen' || ['complaint.submit', 'auth.signout'].contains(newData.child('action').val()))",
-        ".validate": "newData.hasChildren(['at', 'actorUid', 'actorRole', 'action'])",
+        ".write": "auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && !data.exists() && newData.child('actorUid').val() === auth.uid && newData.child('actorRole').val() === root.child('users').child(auth.uid).child('role').val() && newData.child('actorName').val() === root.child('users').child(auth.uid).child('name').val() && newData.child('at').val() === now && (root.child('users').child(auth.uid).child('role').val() !== 'citizen' || newData.child('action').val() === 'complaint.submit' || newData.child('action').val() === 'auth.signout')",
+        ".validate": "newData.hasChild('at') && newData.hasChild('actorUid') && newData.hasChild('actorRole') && newData.hasChild('action')",
         "actorName": {
           ".validate": "newData.isString() && newData.val().length <= 120"
         },

@@ -71,6 +71,20 @@ class SmtpConfigFromSettings(unittest.TestCase):
         self.assertIn("***", repr(cfg))
 
 
+class UnconfiguredGuidance(unittest.TestCase):
+    def test_alert_error_points_to_dashboard_first(self):
+        with self.assertLogs("smartwaste.notifier", "ERROR") as cm:
+            notifier.process_alerts(
+                {"a": {"fillLevel": 95, "location": "Loc a"}},
+                {}, {"recipients": ["a@x.com"]},
+                notifier.SmtpConfig(), now=1_700_000_000_000, env={})
+        message = cm.output[0]
+        self.assertIn("SMTP is not configured", message)
+        self.assertIn("dashboard", message)
+        self.assertIn("SMTP configuration", message)
+        self.assertLess(message.index("dashboard"), message.index(".env"))
+
+
 class Precedence(unittest.TestCase):
     def test_settings_win_when_complete(self):
         cfg = engine.effective_smtp_config(

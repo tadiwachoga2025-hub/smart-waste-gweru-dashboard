@@ -25,6 +25,8 @@ __pycache__/
 *.pyc
 model_xgb.json
 training_history.json
+engine_heartbeat.json
+engine_heartbeat.json.tmp
 
 # Editor directories and files
 .vscode/*

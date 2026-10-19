@@ -6,6 +6,16 @@
 __pycache__
 *.pyc
 engine.py
+notifier.py
 requirements.txt
+Dockerfile
+docker-compose.yml
+.dockerignore
+smart-waste-engine.service
+render.yaml
+DEPLOYMENT.md
+.github
+tests
+scripts
 node_modules
 dist

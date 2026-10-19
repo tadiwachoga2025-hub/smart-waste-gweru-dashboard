@@ -172,6 +172,7 @@ body,
 html {
   background: var(--c-shell);
   -webkit-text-size-adjust: 100%;
+  scrollbar-gutter: stable;
 }
 
 html.lenis,

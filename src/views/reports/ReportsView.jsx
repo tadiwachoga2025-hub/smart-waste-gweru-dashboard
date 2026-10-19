@@ -4,9 +4,10 @@
 // feeds the database rules let that role read. Everything is computed
 // client-side from records.
 
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import { useAuth } from '../../auth/AuthContext.jsx';
 import { useList } from '../../data/useCollection.js';
+import { useScrollReveal } from '../../lib/useSmoothScroll.js';
 import {
   Button, DataError, EmptyState, LoadingRows, Page, PageHead, Panel, Pill, Segmented, Stat, Stats,
 } from '../../components/ui/index.jsx';
@@ -151,6 +152,10 @@ function Shell({ eyebrow, sub, range, onRange, tables, filename, states, childre
   const loading = states.some((s) => s.loading);
   const error = states.find((s) => s.error)?.error;
   const exportable = tables.filter((t) => t.rows.length);
+  // GSAP taste: cards lift in as they scroll into view (skipped entirely
+  // under prefers-reduced-motion inside the helper). Replays per range.
+  const stackRef = useRef(null);
+  useScrollReveal(stackRef, '.card', [range, loading, error]);
   return (
     <Page label="Reports">
       <PageHead
@@ -171,7 +176,7 @@ function Shell({ eyebrow, sub, range, onRange, tables, filename, states, childre
           </>
         )}
       />
-      {error ? <DataError error={error} /> : loading ? <LoadingRows rows={5} /> : <div className="rp-stack">{children}</div>}
+      {error ? <DataError error={error} /> : loading ? <LoadingRows rows={5} /> : <div className="rp-stack" ref={stackRef}>{children}</div>}
     </Page>
   );
 }

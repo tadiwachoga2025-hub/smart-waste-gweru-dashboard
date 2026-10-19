@@ -12,20 +12,37 @@ gsap.registerPlugin(ScrollTrigger);
  */
 export function useSmoothScroll() {
   useEffect(() => {
-    const reduce = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-    if (reduce) return undefined;
+    const query = window.matchMedia('(prefers-reduced-motion: reduce)');
+    let lenis = null;
+    let raf = null;
 
-    const lenis = new Lenis({ lerp: 0.11, wheelMultiplier: 0.9, smoothWheel: true });
-    lenis.on('scroll', ScrollTrigger.update);
-    const raf = (time) => lenis.raf(time * 1000);
-    gsap.ticker.add(raf);
-    gsap.ticker.lagSmoothing(0);
-    window.__lenis = lenis;
+    const start = () => {
+      if (lenis) return;
+      lenis = new Lenis({ lerp: 0.11, wheelMultiplier: 0.9, smoothWheel: true });
+      lenis.on('scroll', ScrollTrigger.update);
+      raf = (time) => lenis.raf(time * 1000);
+      gsap.ticker.add(raf);
+      gsap.ticker.lagSmoothing(0);
+      window.__lenis = lenis;
+    };
 
-    return () => {
+    const stop = () => {
+      if (!lenis) return;
       gsap.ticker.remove(raf);
       lenis.destroy();
+      lenis = null;
+      raf = null;
       delete window.__lenis;
+    };
+
+    // React live to the setting: smooth when allowed, native when reduced.
+    const onChange = (e) => (e.matches ? stop() : start());
+    if (!query.matches) start();
+    query.addEventListener('change', onChange);
+
+    return () => {
+      query.removeEventListener('change', onChange);
+      stop();
     };
   }, []);
 }
