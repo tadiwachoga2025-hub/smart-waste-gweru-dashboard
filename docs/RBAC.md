@@ -56,7 +56,7 @@ Jobs carry a snapshot of their stops so a driver never reads `/bins`. Officers l
 1. Firebase console → Authentication → Sign-in method → enable **Email/Password**.
 2. Create the first administrator: Authentication → Add user. Copy their UID, then in Realtime Database add `users/<uid>` = `{ "name": "…", "email": "…", "role": "admin", "status": "active" }`. (Console writes bypass the rules, which is what makes this bootstrap possible.)
 3. Publish the rules: Realtime Database → Rules → paste `database.rules.json`, or `firebase deploy --only database`.
-4. **ESP32 sensors:** the rules deny anonymous writes. Give the gateway its own Auth user with `role: "device"` (not shown in the UI) and have the firmware sign in, or the sensors will stop reporting. Do this *before* publishing the rules.
+4. **ESP32 sensors:** the rules deny anonymous writes. Give the gateway its own Auth user with `role: "device"` (not shown in the UI) and have the firmware sign in, or the sensors will stop reporting. Do this *before* publishing the rules — `.venv/bin/python scripts/provision_device.py` creates the account and the profile, and `docs/DEVICES.md` has the firmware request shape.
 5. Re-run `engine.py` once so `publicBins` fills in for the citizen view.
 
 ## Demo accounts

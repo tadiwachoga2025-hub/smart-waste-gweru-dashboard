@@ -26,7 +26,38 @@
     "bins": {
       ".read": "(auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'admin')) || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'officer')) || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'technician'))",
       "$binId": {
-        ".write": "(auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'technician')) || (auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'device')) || ((auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && root.child('users').child(auth.uid).child('role').val() === 'admin' && root.child('users').child(auth.uid).child('grants').child('sensors.manage').val() === true))"
+        "fillLevel": {
+          ".write": "(auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'device') && root.child('bins').child($binId).exists()) || ((auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'technician')) || ((auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && root.child('users').child(auth.uid).child('role').val() === 'admin' && root.child('users').child(auth.uid).child('grants').child('sensors.manage').val() === true)))",
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100"
+        },
+        "lastUpdated": {
+          ".write": "(auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'device') && root.child('bins').child($binId).exists()) || ((auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'technician')) || ((auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && root.child('users').child(auth.uid).child('role').val() === 'admin' && root.child('users').child(auth.uid).child('grants').child('sensors.manage').val() === true)))",
+          ".validate": "newData.isNumber() || (newData.isString() && newData.val().length <= 40 && newData.val().matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}T/))"
+        },
+        "battery": {
+          ".write": "(auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'device') && root.child('bins').child($binId).exists()) || ((auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'technician')) || ((auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && root.child('users').child(auth.uid).child('role').val() === 'admin' && root.child('users').child(auth.uid).child('grants').child('sensors.manage').val() === true)))",
+          ".validate": "newData.isNumber() && newData.val() >= 0 && newData.val() <= 100"
+        },
+        "rssi": {
+          ".write": "(auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'device') && root.child('bins').child($binId).exists()) || ((auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'technician')) || ((auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && root.child('users').child(auth.uid).child('role').val() === 'admin' && root.child('users').child(auth.uid).child('grants').child('sensors.manage').val() === true)))",
+          ".validate": "newData.isNumber() && newData.val() >= -120 && newData.val() <= 0"
+        },
+        "lat": {
+          ".write": "(auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'device') && root.child('bins').child($binId).exists()) || ((auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'technician')) || ((auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && root.child('users').child(auth.uid).child('role').val() === 'admin' && root.child('users').child(auth.uid).child('grants').child('sensors.manage').val() === true)))",
+          ".validate": "newData.isNumber() && newData.val() >= -90 && newData.val() <= 90"
+        },
+        "lng": {
+          ".write": "(auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'device') && root.child('bins').child($binId).exists()) || ((auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'technician')) || ((auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && root.child('users').child(auth.uid).child('role').val() === 'admin' && root.child('users').child(auth.uid).child('grants').child('sensors.manage').val() === true)))",
+          ".validate": "newData.isNumber() && newData.val() >= -180 && newData.val() <= 180"
+        },
+        "location": {
+          ".write": "(auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'device') && root.child('bins').child($binId).exists()) || ((auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'technician')) || ((auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && root.child('users').child(auth.uid).child('role').val() === 'admin' && root.child('users').child(auth.uid).child('grants').child('sensors.manage').val() === true)))",
+          ".validate": "newData.isString() && newData.val().length <= 120"
+        },
+        "prediction": {
+          ".write": "(auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && (root.child('users').child(auth.uid).child('role').val() === 'technician')) || ((auth != null && root.child('users').child(auth.uid).child('status').val() === 'active' && root.child('users').child(auth.uid).child('role').val() === 'admin' && root.child('users').child(auth.uid).child('grants').child('sensors.manage').val() === true))",
+          ".validate": "newData.isString() && newData.val().length <= 60"
+        }
       }
     },
     "publicBins": {

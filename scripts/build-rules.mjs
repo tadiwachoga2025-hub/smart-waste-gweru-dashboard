@@ -38,6 +38,10 @@ const stampedNow = `newData.child('createdAt').val() === now`;
 const canDispatch = or(officer, granted('jobs.assign'));
 const canReviewComplaints = or(officer, granted('complaints.review'));
 const canManageSensors = or(technician, granted('sensors.manage'));
+// A device may only refresh a bin that staff already registered. Without
+// this, a device holding a valid token could mint an unlimited number of
+// fake bins. $binId is in scope for the child rules below.
+const deviceOnExistingBin = `${device} && root.child('bins').child($binId).exists()`;
 
 const rules = {
   rules: {
@@ -69,10 +73,55 @@ const rules = {
     },
 
     // Live sensor records written by the ESP32 and engine.py.
+    //
+    // A reading is a narrow, bounded record. Every field is listed
+    // explicitly, each with a validated range, so a device (or anyone
+    // holding a device token) can neither invent fields nor write values
+    // the dashboard and the engine would have to defend against later.
+    // There is deliberately no blanket `.write` on $binId: a rule that
+    // grants write to the whole record would also grant it to fields that
+    // are not listed here.
+    //
+    // `prediction` belongs to the engine, which writes it through the Admin
+    // SDK (Admin writes bypass rules). No client and no device may set it.
     bins: {
       '.read': or(admin, officer, technician),
       $binId: {
-        '.write': or(technician, device, granted('sensors.manage')),
+        fillLevel: {
+          '.write': or(deviceOnExistingBin, canManageSensors),
+          '.validate': 'newData.isNumber() && newData.val() >= 0 && newData.val() <= 100',
+        },
+        // Epoch milliseconds, or an ISO-8601 string. A free-text stamp
+        // ("Just Now") is unreadable, and the dashboard treats an unreadable
+        // stamp as an unknown age.
+        lastUpdated: {
+          '.write': or(deviceOnExistingBin, canManageSensors),
+          '.validate': 'newData.isNumber() || (newData.isString() && newData.val().length <= 40 && newData.val().matches(/^[0-9]{4}-[0-9]{2}-[0-9]{2}T/))',
+        },
+        battery: {
+          '.write': or(deviceOnExistingBin, canManageSensors),
+          '.validate': 'newData.isNumber() && newData.val() >= 0 && newData.val() <= 100',
+        },
+        rssi: {
+          '.write': or(deviceOnExistingBin, canManageSensors),
+          '.validate': 'newData.isNumber() && newData.val() >= -120 && newData.val() <= 0',
+        },
+        lat: {
+          '.write': or(deviceOnExistingBin, canManageSensors),
+          '.validate': coord(90),
+        },
+        lng: {
+          '.write': or(deviceOnExistingBin, canManageSensors),
+          '.validate': coord(180),
+        },
+        location: {
+          '.write': or(deviceOnExistingBin, canManageSensors),
+          '.validate': text(120),
+        },
+        prediction: {
+          '.write': canManageSensors,
+          '.validate': text(60),
+        },
       },
     },
 

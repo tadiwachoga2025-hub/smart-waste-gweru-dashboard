@@ -32,3 +32,17 @@ jobs:
       - run: npm ci
       - run: npm run lint
       - run: npm run build
+
+  # Nothing secret may enter the repository: the Firebase service-account key
+  # holds full admin access to the live database, and a leaked key defeats
+  # every rule in database.rules.json.
+  secrets:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Scan the working tree for credentials
+        run: bash scripts/scan_secrets.sh
+      - name: Scan the history for credentials
+        run: bash scripts/scan_secrets.sh --history
